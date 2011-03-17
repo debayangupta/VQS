@@ -1,0 +1,183 @@
+//
+//  SampleParser.cpp
+//  VQS
+//
+//  Created by Azza Abouzied on 12/16/10.
+//  Copyright 2010 Yale University. All rights reserved.
+//
+
+#include <vector>
+#include <string>
+
+#include <boost/spirit/include/qi.hpp>
+#include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/variant.hpp>
+#include <boost/spirit/include/phoenix_core.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+#include <boost/spirit/include/phoenix_stl.hpp>
+#include <boost/spirit/include/phoenix_fusion.hpp>
+#include <boost/spirit/include/phoenix_object.hpp>
+
+#include <Schema.hpp>
+
+namespace vqs{
+    
+    struct scatterplot{
+        std::string x;
+        std::string y;
+    };
+    
+    struct barchart{
+        std::string x;
+    };
+    
+    struct datasource{
+        std::string schema;
+        std::string colname;
+    };
+    
+    typedef boost::variant<datasource, scatterplot, barchart> ops;
+    
+    struct node{
+        std::string name_;
+        ops operator_;
+    };
+    
+    struct pipeline{
+        std::vector<node> instructions;
+    };
+}
+
+BOOST_FUSION_ADAPT_STRUCT(
+                          vqs::scatterplot,
+						  (std::string, x)
+                          (std::string, y)
+                          )
+
+BOOST_FUSION_ADAPT_STRUCT(
+                          vqs::barchart,
+						  (std::string, x)
+                          )
+
+BOOST_FUSION_ADAPT_STRUCT(
+                          vqs::datasource,
+						  (std::string, schema)
+                          (std::string, colname)
+                          )
+
+BOOST_FUSION_ADAPT_STRUCT(
+                          vqs::node,
+						  (std::string, name_)
+                          (vqs::ops, operator_)
+                          )
+
+BOOST_FUSION_ADAPT_STRUCT(
+                          vqs::pipeline, 
+                          (std::vector<vqs::node>, instructions)
+                          )
+
+
+namespace vqs{
+	
+    struct node_printer : boost::static_visitor<>{
+        void operator()(scatterplot const& sc) const{
+			std::cout << "Scatterplot of X: " << sc.x <<  " against Y: " << sc.y << std::endl;
+        }
+		
+        void operator()(datasource const& ds) const{
+            std::cout << "Datasource Schema: " << ds.schema << " Column: " << ds.colname << std::endl;
+        }
+		
+		void operator()(barchart const& bc) const{
+            std::cout << "BarChart of X: " << bc.x << std::endl;
+        }
+		
+    };
+	struct pipeline_printer{
+		void operator()(pipeline const& pipe) const{
+			BOOST_FOREACH(node const& n, pipe.instructions){
+				std::cout << n.name_ << ": ";
+				boost::apply_visitor(node_printer(), n.operator_);
+			}
+		}
+    };
+	
+	struct node_builder : boost::static_visitor<>{
+		void operator()(datasource const& ds) const{
+			Schema s = Schema::getSchema(ds.schema);
+			std::string type = s.getType(ds.colname);
+			if(type == typeid(int).name())
+		}
+		void operator()(scatterplot const& sc) const{
+			
+		}
+	}
+	
+    template <typename Iterator>
+    struct vqs_grammar : boost::spirit::qi::grammar<Iterator, pipeline(), boost::spirit::ascii::space_type>{
+        vqs_grammar() : vqs_grammar::base_type(pipe){
+            
+            identifier = (+boost::spirit::qi::alpha >> *(boost::spirit::qi::alnum | '_'));
+            schema %= identifier;
+            colname %= identifier;
+            varname %= identifier;
+            
+            rdatasource %= 
+            boost::spirit::qi::lit("datasource") >> 
+            boost::spirit::qi::lit('(') >>
+            schema >> boost::spirit::qi::lit(',') >>
+            colname >> boost::spirit::qi::lit(')');
+            
+            rscatterplot %= 
+            boost::spirit::qi::lit("scatterplot") >> 
+            boost::spirit::qi::lit('(') >> 
+            (varname) >> boost::spirit::qi::lit(',') >>
+            (varname) >> boost::spirit::qi::lit(')');
+            
+            rbarchart %=  
+            boost::spirit::qi::lit("barchart") >> 
+            boost::spirit::qi::lit('(') >> 
+            (varname) >> boost::spirit::qi::lit(')');
+			
+            rnode %= ((varname) >> 
+                      boost::spirit::qi::lit('=') >> 
+                      (rdatasource | rbarchart | rscatterplot) >> 
+                      boost::spirit::qi::lit(';')) ;
+			
+            pipe %= +(rnode) >> boost::spirit::qi::eps;
+        }
+        boost::spirit::qi::rule<Iterator, pipeline(), boost::spirit::ascii::space_type> pipe;
+        boost::spirit::qi::rule<Iterator, node(), boost::spirit::ascii::space_type> rnode;
+        boost::spirit::qi::rule<Iterator, barchart(), boost::spirit::ascii::space_type> rbarchart;
+        boost::spirit::qi::rule<Iterator, scatterplot(), boost::spirit::ascii::space_type> rscatterplot;
+        boost::spirit::qi::rule<Iterator, datasource(), boost::spirit::ascii::space_type> rdatasource;
+        boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::ascii::space_type> varname;
+        boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::ascii::space_type> colname;
+        boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::ascii::space_type> schema;
+        boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::ascii::space_type> identifier;
+        
+        
+    };
+}
+
+int main_(){
+    std::string code = "ds0 = datasource(fooddb, NDB_No) ; ds1 = datasource(fooddb, Sugar_Tot); sc0 = scatterplot(ds0, ds1) ; bc0 = barchart(ds0); ";
+    
+    typedef vqs::vqs_grammar<std::string::const_iterator> vqs_grammar;
+	vqs_grammar vqs;
+	
+	vqs::pipeline pipelines;
+    
+    std::string::const_iterator iter = code.begin();
+    std::string::const_iterator end = code.end();
+    
+    bool r = boost::spirit::qi::phrase_parse(iter, end, vqs, boost::spirit::ascii::space, pipelines);	
+    
+	vqs::pipeline_printer printer;
+	printer(pipelines);
+    
+	if (r) {
+		return 0;
+	}
+	return 1;
+}

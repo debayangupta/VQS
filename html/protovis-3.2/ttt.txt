@@ -1,0 +1,20 @@
+Server
+>> Vis type
+>> dob sending
+>> 
+
+
+Client
+>> Data req
+>> Data modification
+>> >> Control parameters
+>> >> Visualization parameters
+>> Scatterplot
+>> hgram
+>> Line plot
+>> validation req
+
+
+>> Build and test basic API for rendering and updating visz on dummy data
+>> Find out what update method works better (if any)
+>> 

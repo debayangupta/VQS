@@ -1,0 +1,200 @@
+<html>
+<head>
+	<title>Focus + Context</title>
+	<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
+
+	<style type="text/css">
+.wrap {float:left;padding:20px;background-color:#EEE}
+#fcplot0 {background:white}
+	</style>
+	
+	<script type="text/javascript">
+//--
+
+function _gel(x) {return document.getElementById(x)}
+
+function doAJAX(target) {
+
+	xmlhttp = (window.XMLHttpRequest)?new XMLHttpRequest():(window.ActiveXObject)?new ActiveXObject("Microsoft.XMLHTTP"):null;
+	
+	if(xmlhttp == null) {// AJAX not supported
+		alert('AJAX not Supported');
+		return;
+	}
+
+	xmlhttp.open("GET", (target) ,false);
+	xmlhttp.send(null);
+	
+	return xmlhttp.responseText;
+}
+
+var vis = [];
+var p = ['scplot0'];
+var dx;
+
+function getData( plotType, dataLoc, width, height) { // minimum args = 4
+
+	
+	this.w = width;
+	this.h = height;
+	
+	this.data = JSON.parse( doAJAX( dataLoc ) );
+	
+	switch( plotType ) {
+	
+	case 'scatterplot':
+		// scatterplot requires 3 more arguments: the names of the x,y,z fields
+		var vx = arguments[4]||'x', vy = arguments[5]||'y', vz = arguments[6]||'z';
+		this.xval 	= new Function("d", "return this.root.x(d." + vx + ")");
+		this.yval 	= new Function("d", "return this.root.y(d." + vy + ")");
+		this.colour = new Function("d", "return this.root.c(d." + vz + ")");
+		this.size 	= new Function("d", "return d." + vz);
+		this.title 	= new Function("d", "return d." + vz + ".toFixed(1)");
+		break;
+		
+	case 'focus+zoom':
+		//focus+zoom requires 3 more arguments: height of small graph, and names of x,y fields
+		this.h2 = arguments[4];
+		
+		var vx = arguments[5]||'x', vy = arguments[6]||'y';
+		this.x		= new Function("d", "return d." + vx);
+		this.y		= new Function("d", "return d." + vy);
+		this.xval	= new Function("d", "return this.root.x(d." + vx + ")");
+		this.yval	= new Function("d", "return this.root.y(d." + vy + ")");
+		this.fx		= new Function("d", "return this.root.fx(d." + vx + ")");
+		this.fy		= new Function("d", "return this.root.fy(d." + vy + ")");
+		break;
+		
+	default:
+		alert('What the heck is a "' + plotType + '" ?!');
+	}
+	
+	return this;
+}
+
+	</script>
+	
+</head>
+
+<body>
+
+<div id="fcplot0">
+    <div style="display:none"><input checked id="scale"></div>
+	
+    <script type="text/javascript+protovis">
+p.push('fcplot0');
+dx = getData( 'focus+zoom', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
+
+/* Root panel. */
+vis[ p[1] ] = new pv.Panel()
+    .width(dx.w)
+    .height(dx.h + 20 + dx.h2)
+    .bottom(20)
+    .left(30)
+    .right(20)
+    .top(5);
+	
+
+/* Scales and sizing. */
+vis[ p[1] ].x = pv.Scale.linear(0, pv.max(dx.data, dx.x)).range(0, dx.w);
+vis[ p[1] ].y = pv.Scale.linear(0, pv.max(dx.data, dx.y)).range(0, dx.h2); //how to get max
+
+/* Interaction state. Focus scales will have domain set on-render. */
+var i = {x:0, dx:0};	// initial state
+vis[ p[1] ].fx = pv.Scale.linear().range(0, dx.w);
+vis[ p[1] ].fy = pv.Scale.linear().range(0, dx.h);
+
+/* Focus panel (zoomed in). */
+vis[ p[1] ].focus = vis[ p[1] ].add(pv.Panel)
+    .def("init", function() {
+        var d1 = this.root.x.invert(i.x),
+            d2 = this.root.x.invert(i.x + i.dx),
+            dd = dx.data.slice(
+                Math.max(0, pv.search.index(dx.data, d1, dx.x ) - 1),
+                pv.search.index(dx.data, d2, dx.x ) + 1);
+        this.root.fx.domain(d1, d2);
+        this.root.fy.domain(scale.checked ? [0, pv.max(dd, dx.y)] : vis[ p[1] ].y.domain());
+        return dd;
+      })
+    .top(0)
+    .height(dx.h);
+
+/* X-axis ticks. */
+vis[ p[1] ].focus.add(pv.Rule)
+    .data(function() this.root.fx.ticks())
+    .left(vis[ p[1] ].fx)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(vis[ p[1] ].fx.tickFormat);
+
+/* Y-axis ticks. */
+vis[ p[1] ].focus.add(pv.Rule)
+    .data(function() this.root.fy.ticks(7))
+    .bottom(vis[ p[1] ].fy)
+    .strokeStyle(function(d) d ? "#aaa" : "#000")
+  .anchor("left").add(pv.Label)
+    .text(vis[ p[1] ].fy.tickFormat);
+
+/* Focus area chart. */
+vis[ p[1] ].focus.add(pv.Panel)
+    .overflow("hidden")
+  .add(pv.Area)
+    .data(function() this.root.focus.init())
+    .left(dx.fx)
+    .bottom(1)
+    .height(dx.fy)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .fillStyle(null)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+/* Context panel (zoomed out). */
+var Context = vis[ p[1] ].add(pv.Panel) //CHANGE TO INNER
+    .bottom(0)
+    .height(dx.h2);
+
+/* X-axis ticks. */
+Context.add(pv.Rule)
+    .data(vis[ p[1] ].x.ticks())
+    .left(vis[ p[1] ].x)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(vis[ p[1] ].x.tickFormat);
+
+/* Y-axis ticks. */
+Context.add(pv.Rule)
+    .bottom(0);
+
+/* Context area chart. */
+Context.add(pv.Area)
+    .data(dx.data)
+    .left(dx.xval)
+    .bottom(1)
+    .height(dx.yval)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+/* The selectable, draggable focus region. */
+Context.add(pv.Panel)
+    .data([i])
+    .cursor("crosshair")
+    .events("all")
+    .event("mousedown", pv.Behavior.select())
+    .event("select", vis[ p[1] ].focus)
+  .add(pv.Bar)
+    .left(function(d) d.x)
+    .width(function(d) d.dx)
+    .fillStyle("rgba(255, 128, 128, .4)")
+    .cursor("move")
+    .event("mousedown", pv.Behavior.drag())
+    .event("drag", vis[ p[1] ].focus);
+
+vis[ p[1] ].render();
+
+	</script>
+</div>
+</body>
+</html>

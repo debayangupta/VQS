@@ -1,22 +1,17 @@
 <html>
 <head>
-<title>Scatterplot</title>
+	<title>Scatterplot</title>
+	
+	<link rel="stylesheet" type="text/css" href="mainstyles.css"/>
+	
+	<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
+	<script type="text/javascript" src="mainscript.js"></script>
 
-<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
-<script type="text/javascript" src="mainscript.js"></script>
-
-<style type="text/css">
-.wrap {float:left;padding:20px;background:#EEE}
-.wrap > div {background:white}
-#control {}
-</style>
-
-<script type="text/javascript">
+	<script type="text/javascript">
 window.onload = function() {
-	_gel('update').val = 1;
-	_gel('update').onclick = function() {doUpdate('data/updateList.json')};
+	_gel('update').onclick = function() {doDataUpdate('data/updateList.json')};
 }
-</script>
+	</script>
 
 </head>
 
@@ -29,20 +24,23 @@ window.onload = function() {
 	<script type="text/javascript+protovis">
 // this is visualization p[0]
 p.push('scplot0');
-dx = getData( 'scatterplot', 'data/direct_scplot0.json', 400, 400, 'x1', 'y1', 'z1');
+dx[ p[0] ] = getData( 'scatterplot', 'data/direct_scplot0.json', 400, 400, 'x1', 'y1', 'z1');
 
 /* The root panel. vis[p[0]] == this.root*/
 vis[ p[0] ] = new pv.Panel()
-    .width(dx.w)
-    .height(dx.h)
+    .width(dx[ p[0] ].w)
+    .height(dx[ p[0] ].h)
     .bottom(20)
     .left(20)
     .right(10)
     .top(5);
-	
+
+//links
+vis[ p[0] ].links = [];
+
 /* scales. */
-vis[ p[0] ].x = pv.Scale.linear(0, 99).range(0, dx.h);
-vis[ p[0] ].y = pv.Scale.linear(0, 1).range(0, dx.h);
+vis[ p[0] ].x = pv.Scale.linear(0, 99).range(0, dx[ p[0] ].h);
+vis[ p[0] ].y = pv.Scale.linear(0, 1).range(0, dx[ p[0] ].h);
 vis[ p[0] ].c = pv.Scale.log(1, 100).range("blue", "black");
 
 /* Y-axis and ticks. */
@@ -65,20 +63,25 @@ vis[ p[0] ].add(pv.Rule)
 
 /* The dot plot! */
 vis[ p[0] ].tdata = vis[ p[0] ].add(pv.Panel);
-    vis[ p[0] ].tdata.data(dx.data)
+    vis[ p[0] ].tdata.data(dx[ p[0] ].data)
   .add(pv.Dot)
-    .left(dx.xval)
-    .bottom(dx.yval)
-    .strokeStyle(dx.colour)
+    .left(dx[ p[0] ].xval)
+    .bottom(dx[ p[0] ].yval)
+    .strokeStyle(dx[ p[0] ].colour)
     .fillStyle(function() this.strokeStyle().alpha(.2))
-    .size(dx.size)
-    .title(dx.title);//----------
+    .size(dx[ p[0] ].size)
+    .title(dx[ p[0] ].title);//----------
 	
 vis[ p[0] ].s = false;
 
 vis[ p[0] ].internalUpdate = function(d) {
 	vis[ p[0] ].s = d;
-	_gel('x3').innerHTML = '(x,y) = (' + d.x + ', ' + d.y + ')\n (width, height) = (' + d.dx + ', ' + d.dy + ')';
+	_gel('x3').innerHTML = '(x,y) = (' + d.x + ', ' + d.y + ')\n (w, h) = (' + d.dx + ', ' + d.dy + ')';
+}
+vis[p[0]].updateLinks = function(d) {
+	var L = this.root.links;
+	for(i=0; i<L.length; i++)
+		vis[ L[i] ].doUpdate(d, this.root);
 }
 
 vis[ p[0] ].add(pv.Panel)
@@ -99,7 +102,7 @@ vis[ p[0] ].add(pv.Panel)
 	.cursor("move")
 	.event("mousedown", pv.Behavior.drag())
 	.event("drag", vis[ p[0] ].internalUpdate) // update x,y
-	.event("mouseup", function() {} ); // completed selection
+	.event("mouseup", vis[p[0]].updateLinks ); // completed selection
 
 vis[ p[0] ].render();
 
@@ -118,10 +121,135 @@ vis[ p[0] ].render();
 <div class="wrap">
 <!-- wrapper -->
 
-<div id="lplot">
-<p>TODO: Insert linked 'focus+context' here.</p>
-	<script type="text/javascript+protovis">
-// this is visualization p[1]
+<div id="fcplot0">
+    <div style="display:none"><input checked id="scale"></div>
+	
+    <script type="text/javascript+protovis">
+p.push('fcplot0');
+vis[ 'scplot0' ].links.push( p[1] );
+
+dx[p[1]] = getData( 'focus+zoom', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
+
+/* Root panel. */
+vis[ p[1] ] = new pv.Panel()
+    .width(dx[p[1]].w)
+    .height(dx[p[1]].h + 20 + dx[p[1]].h2)
+    .bottom(20)
+    .left(30)
+    .right(20)
+    .top(5);
+
+//links
+vis[ p[1] ].links = [];
+
+/* Scales and sizing. */
+vis[ p[1] ].x = pv.Scale.linear(0, pv.max(dx[p[1]].data, dx[p[1]].x)).range(0, dx[p[1]].w);
+vis[ p[1] ].y = pv.Scale.linear(0, pv.max(dx[p[1]].data, dx[p[1]].y)).range(0, dx[p[1]].h2); //how to get max
+
+/* Interaction state. Focus scales will have domain set on-render. */
+vis[ p[1] ].i = {x:0, dx:0};	// initial state
+vis[ p[1] ].fx = pv.Scale.linear().range(0, dx[p[1]].w);
+vis[ p[1] ].fy = pv.Scale.linear().range(0, dx[p[1]].h);
+
+/* Focus panel (zoomed in). */
+vis[ p[1] ].focus = vis[ p[1] ].add(pv.Panel)
+    .def("init", function() {
+		var i = vis[ p[1] ].i;
+        var d1 = this.root.x.invert(i.x),
+            d2 = this.root.x.invert(i.x + i.dx),
+            dd = dx[p[1]].data.slice(
+                Math.max(0, pv.search.index(dx[p[1]].data, d1, dx[p[1]].x ) - 1),
+                pv.search.index(dx[p[1]].data, d2, dx[p[1]].x ) + 1);
+        this.root.fx.domain(d1, d2);
+        this.root.fy.domain(scale.checked ? [0, pv.max(dd, dx[p[1]].y)] : vis[ p[1] ].y.domain());
+        return dd;
+      })
+    .top(0)
+    .height(dx[p[1]].h);
+
+/* X-axis ticks. */
+vis[ p[1] ].focus.add(pv.Rule)
+    .data(function() this.root.fx.ticks())
+    .left(vis[ p[1] ].fx)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(vis[ p[1] ].fx.tickFormat);
+
+/* Y-axis ticks. */
+vis[ p[1] ].focus.add(pv.Rule)
+    .data(function() this.root.fy.ticks(7))
+    .bottom(vis[ p[1] ].fy)
+    .strokeStyle(function(d) d ? "#aaa" : "#000")
+  .anchor("left").add(pv.Label)
+    .text(vis[ p[1] ].fy.tickFormat);
+
+/* Focus area chart. */
+vis[ p[1] ].focus.add(pv.Panel)
+    .overflow("hidden")
+  .add(pv.Area)
+    .data(function() this.root.focus.init())
+    .left(dx[p[1]].fx)
+    .bottom(1)
+    .height(dx[p[1]].fy)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .fillStyle(null)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+/* Context panel (zoomed out). */
+var Context = vis[ p[1] ].add(pv.Panel) //CHANGE TO INNER
+    .bottom(0)
+    .height(dx[p[1]].h2);
+
+/* X-axis ticks. */
+Context.add(pv.Rule)
+    .data(vis[ p[1] ].x.ticks())
+    .left(vis[ p[1] ].x)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(vis[ p[1] ].x.tickFormat);
+
+/* Y-axis ticks. */
+Context.add(pv.Rule)
+    .bottom(0);
+
+/* Context area chart. */
+Context.add(pv.Area)
+    .data(dx[p[1]].data)
+    .left(dx[p[1]].xval)
+    .bottom(1)
+    .height(dx[p[1]].yval)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+/* The selectable, draggable focus region. */
+Context.add(pv.Panel)
+    .data([vis[ p[1] ].i])
+    .cursor("crosshair")
+    .events("all")
+    .event("mousedown", pv.Behavior.select())
+    .event("select", vis[ p[1] ].focus)
+  .add(pv.Bar)
+    .left(function(d) d.x)
+    .width(function(d) d.dx)
+    .fillStyle("rgba(255, 128, 128, .4)")
+    .cursor("move")
+    .event("mousedown", pv.Behavior.drag())
+    .event("drag", vis[ p[1] ].focus);
+
+vis[ p[1] ].render();
+
+vis[ p[1] ].doUpdate = function(d, src) {
+	var x = src.x.invert(d.x);
+	var dx = src.x.invert(d.dx);
+	
+	vis[ p[1] ].i.x = this.root.x( x );
+	vis[ p[1] ].i.dx = this.root.x( dx );
+	vis[ p[1] ].render();
+}
 
 	</script>
 </div>

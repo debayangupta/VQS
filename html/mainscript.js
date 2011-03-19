@@ -1,6 +1,6 @@
 var vis = [];
 var p = [];
-var dx = [];
+var DX = [];
 
 function _gel(x) {return document.getElementById(x)}
 

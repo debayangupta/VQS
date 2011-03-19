@@ -24,12 +24,12 @@ window.onload = function() {
 	<script type="text/javascript+protovis">
 // this is visualization p[0]
 p.push('scplot0');
-dx[ p[0] ] = getData( 'scatterplot', 'data/direct_scplot0.json', 400, 400, 'x1', 'y1', 'z1');
+DX[ p[0] ] = new getData( 'scatterplot', 'data/direct_scplot0.json', 400, 400, 'x1', 'y1', 'z1');
 
 /* The root panel. vis[p[0]] == this.root*/
 vis[ p[0] ] = new pv.Panel()
-    .width(dx[ p[0] ].w)
-    .height(dx[ p[0] ].h)
+    .width(DX[ p[0] ].w)
+    .height(DX[ p[0] ].h)
     .bottom(20)
     .left(20)
     .right(10)
@@ -39,9 +39,11 @@ vis[ p[0] ] = new pv.Panel()
 vis[ p[0] ].links = [];
 
 /* scales. */
-vis[ p[0] ].x = pv.Scale.linear(0, 99).range(0, dx[ p[0] ].h);
-vis[ p[0] ].y = pv.Scale.linear(0, 1).range(0, dx[ p[0] ].h);
+vis[ p[0] ].x = pv.Scale.linear(0, 99).range(0, DX[ p[0] ].h);
+vis[ p[0] ].y = pv.Scale.linear(0, 1).range(0, DX[ p[0] ].h);
 vis[ p[0] ].c = pv.Scale.log(1, 100).range("blue", "black");
+
+vis[ p[0] ].updating = false;
 
 /* Y-axis and ticks. */
 vis[ p[0] ].add(pv.Rule)
@@ -63,29 +65,49 @@ vis[ p[0] ].add(pv.Rule)
 
 /* The dot plot! */
 vis[ p[0] ].tdata = vis[ p[0] ].add(pv.Panel);
-    vis[ p[0] ].tdata.data(dx[ p[0] ].data)
+    vis[ p[0] ].tdata.data(DX[ p[0] ].data)
   .add(pv.Dot)
-    .left(dx[ p[0] ].xval)
-    .bottom(dx[ p[0] ].yval)
-    .strokeStyle(dx[ p[0] ].colour)
+    .left(DX[ p[0] ].xval)
+    .bottom(DX[ p[0] ].yval)
+    .strokeStyle(DX[ p[0] ].colour)
     .fillStyle(function() this.strokeStyle().alpha(.2))
-    .size(dx[ p[0] ].size)
-    .title(dx[ p[0] ].title);//----------
+    .size(DX[ p[0] ].size)
+    .title(DX[ p[0] ].title);//----------
 	
 vis[ p[0] ].s = false;
 
 vis[ p[0] ].internalUpdate = function(d) {
 	vis[ p[0] ].s = d;
 	_gel('x3').innerHTML = '(x,y) = (' + d.x + ', ' + d.y + ')\n (w, h) = (' + d.dx + ', ' + d.dy + ')';
+	
+	//cont. updatation
+	this.root.updateLinks(d);
 }
 vis[p[0]].updateLinks = function(d) {
 	var L = this.root.links;
+	this.root.updating = true;
 	for(i=0; i<L.length; i++)
 		vis[ L[i] ].doUpdate(d, this.root);
+	this.root.updating = false;
+
+}
+vis[ p[0] ].doUpdate = function(d, src) {
+	if( this.root.updating ) return;
+	
+	var x = this.root.x( src.x.invert(d.x) );
+	var dx = this.root.x(src.x.invert(d.x + d.dx)) - x;
+	
+	//CHANGE THIS!!
+	var y = 0;
+	var dy = DX[ p[0] ].w;
+	
+	this.root.s = true;
+	this.root.selection.data([{x:x, y:y, dx:dx, dy:dy}]);
+	this.root.render();
 }
 
-vis[ p[0] ].add(pv.Panel)
-	.data([{x:20, y:20, dx:100, dy:100}])
+vis[ p[0] ].selection = vis[ p[0] ].add(pv.Panel);
+vis[ p[0] ].selection.data([{x:20, y:20, dx:100, dy:100}])
 	.cursor("crosshair")
 	.events("all")
 	.event("mousedown", pv.Behavior.select())
@@ -102,9 +124,11 @@ vis[ p[0] ].add(pv.Panel)
 	.cursor("move")
 	.event("mousedown", pv.Behavior.drag())
 	.event("drag", vis[ p[0] ].internalUpdate) // update x,y
-	.event("mouseup", vis[p[0]].updateLinks ); // completed selection
+	//.event("mouseup", vis[p[0]].updateLinks ); // completed selection : single update only
 
 vis[ p[0] ].render();
+
+
 
 </script>
 </div>
@@ -125,15 +149,18 @@ vis[ p[0] ].render();
     <div style="display:none"><input checked id="scale"></div>
 	
     <script type="text/javascript+protovis">
+// put in list
 p.push('fcplot0');
+
+// this is linked to (// good reason for keeping it BEFORE data input)
 vis[ 'scplot0' ].links.push( p[1] );
 
-dx[p[1]] = getData( 'focus+zoom', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
+DX[p[1]] = new getData( 'focus+zoom', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
 
 /* Root panel. */
 vis[ p[1] ] = new pv.Panel()
-    .width(dx[p[1]].w)
-    .height(dx[p[1]].h + 20 + dx[p[1]].h2)
+    .width(DX[p[1]].w)
+    .height(DX[p[1]].h + 20 + DX[p[1]].h2)
     .bottom(20)
     .left(30)
     .right(20)
@@ -141,15 +168,40 @@ vis[ p[1] ] = new pv.Panel()
 
 //links
 vis[ p[1] ].links = [];
+vis[ p[1] ].links.push( 'scplot0' );
 
 /* Scales and sizing. */
-vis[ p[1] ].x = pv.Scale.linear(0, pv.max(dx[p[1]].data, dx[p[1]].x)).range(0, dx[p[1]].w);
-vis[ p[1] ].y = pv.Scale.linear(0, pv.max(dx[p[1]].data, dx[p[1]].y)).range(0, dx[p[1]].h2); //how to get max
+vis[ p[1] ].x = pv.Scale.linear(0, pv.max(DX[p[1]].data, DX[p[1]].x)).range(0, DX[p[1]].w);
+vis[ p[1] ].y = pv.Scale.linear(0, pv.max(DX[p[1]].data, DX[p[1]].y)).range(0, DX[p[1]].h2); //how to get max
 
 /* Interaction state. Focus scales will have domain set on-render. */
 vis[ p[1] ].i = {x:0, dx:0};	// initial state
-vis[ p[1] ].fx = pv.Scale.linear().range(0, dx[p[1]].w);
-vis[ p[1] ].fy = pv.Scale.linear().range(0, dx[p[1]].h);
+vis[ p[1] ].fx = pv.Scale.linear().range(0, DX[p[1]].w);
+vis[ p[1] ].fy = pv.Scale.linear().range(0, DX[p[1]].h);
+
+vis[ p[1] ].updating = false;
+
+//updation
+vis[ p[1] ].doUpdate = function(d, src) {
+	if( this.root.updating ) return;
+
+	var x = src.x.invert(d.x);
+	var dx = src.x.invert(d.dx);
+	
+	vis[ p[1] ].i.x = this.root.x( x );
+	vis[ p[1] ].i.dx = this.root.x( dx );
+	vis[ p[1] ].render();
+}
+
+vis[ p[1] ].updateLinks = function(d) {
+
+	var L = this.root.links;
+	this.root.updating = true;
+	for(i=0; i<L.length; i++)
+		vis[ L[i] ].doUpdate(d, this.root);
+	this.root.updating = false;
+}
+
 
 /* Focus panel (zoomed in). */
 vis[ p[1] ].focus = vis[ p[1] ].add(pv.Panel)
@@ -157,15 +209,16 @@ vis[ p[1] ].focus = vis[ p[1] ].add(pv.Panel)
 		var i = vis[ p[1] ].i;
         var d1 = this.root.x.invert(i.x),
             d2 = this.root.x.invert(i.x + i.dx),
-            dd = dx[p[1]].data.slice(
-                Math.max(0, pv.search.index(dx[p[1]].data, d1, dx[p[1]].x ) - 1),
-                pv.search.index(dx[p[1]].data, d2, dx[p[1]].x ) + 1);
+            dd = DX[p[1]].data.slice(
+                Math.max(0, pv.search.index(DX[p[1]].data, d1, DX[p[1]].x ) - 1),
+                pv.search.index(DX[p[1]].data, d2, DX[p[1]].x ) + 1);
         this.root.fx.domain(d1, d2);
-        this.root.fy.domain(scale.checked ? [0, pv.max(dd, dx[p[1]].y)] : vis[ p[1] ].y.domain());
+        this.root.fy.domain(scale.checked ? [0, pv.max(dd, DX[p[1]].y)] : vis[ p[1] ].y.domain());
+		this.root.updateLinks(i);
         return dd;
       })
     .top(0)
-    .height(dx[p[1]].h);
+    .height(DX[p[1]].h);
 
 /* X-axis ticks. */
 vis[ p[1] ].focus.add(pv.Rule)
@@ -188,9 +241,9 @@ vis[ p[1] ].focus.add(pv.Panel)
     .overflow("hidden")
   .add(pv.Area)
     .data(function() this.root.focus.init())
-    .left(dx[p[1]].fx)
+    .left(DX[p[1]].fx)
     .bottom(1)
-    .height(dx[p[1]].fy)
+    .height(DX[p[1]].fy)
     .fillStyle("lightsteelblue")
   .anchor("top").add(pv.Line)
     .fillStyle(null)
@@ -200,7 +253,7 @@ vis[ p[1] ].focus.add(pv.Panel)
 /* Context panel (zoomed out). */
 var Context = vis[ p[1] ].add(pv.Panel) //CHANGE TO INNER
     .bottom(0)
-    .height(dx[p[1]].h2);
+    .height(DX[p[1]].h2);
 
 /* X-axis ticks. */
 Context.add(pv.Rule)
@@ -216,10 +269,10 @@ Context.add(pv.Rule)
 
 /* Context area chart. */
 Context.add(pv.Area)
-    .data(dx[p[1]].data)
-    .left(dx[p[1]].xval)
+    .data(DX[p[1]].data)
+    .left(DX[p[1]].xval)
     .bottom(1)
-    .height(dx[p[1]].yval)
+    .height(DX[p[1]].yval)
     .fillStyle("lightsteelblue")
   .anchor("top").add(pv.Line)
     .strokeStyle("steelblue")
@@ -242,18 +295,10 @@ Context.add(pv.Panel)
 
 vis[ p[1] ].render();
 
-vis[ p[1] ].doUpdate = function(d, src) {
-	var x = src.x.invert(d.x);
-	var dx = src.x.invert(d.dx);
-	
-	vis[ p[1] ].i.x = this.root.x( x );
-	vis[ p[1] ].i.dx = this.root.x( dx );
-	vis[ p[1] ].render();
-}
 
 	</script>
 </div>
-
+<span id="tempx"></span>
 <!-- wrapper -->
 </div>
 

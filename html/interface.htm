@@ -336,6 +336,10 @@ function buildFields( relation ) {
 	var sF = _gel('selectedFields').getElementsByTagName('div')[0];
 	
 	var selectField = function() { // applies to availFields spans
+	
+		if( _gel('sFMode').value != 'Current Mode: ADD' )
+			toggleMode( _gel('sFMode') );
+			
 		this.onclick = addSelected; // default for selectedFields spans
 		this.innerHTML = relation + '.' + this.innerHTML;
 		sF.appendChild( this );

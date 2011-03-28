@@ -1,0 +1,9 @@
+{
+	"relations": ["Table One", "Table Two", "Scplot", "Table Four", "Table Five"],
+
+	"Table One":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven", "Field Eight", "Field Nine"],
+	"Table Two":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven", "Field Eight", "Field Nine", "Field Ten", "Field Eleven"], 
+	"Scplot":	["Field One", "x1", "Field Three", "Field Four", "z1", "y1", "Field Seven", "Field Eight"], 
+	"Table Four":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five"], 
+	"Table Five":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven"]
+}

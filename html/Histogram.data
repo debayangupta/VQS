@@ -1,0 +1,6 @@
+_VX = new pv.Panel().width(200).height(150);
+_DX = _DATA;
+_VX.barWidth = 200/_DX.length;
+_VX.x = pv.Scale.linear(0, pv.max(_DX)).range(0, 150);
+_VX.add(pv.Bar).data(_DX).width( _VX.barWidth-5 ).height(function(d) {return this.root.x(d)}).bottom(0).left(function() {return this.index * _VX.barWidth});
+_VX.render();

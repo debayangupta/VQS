@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<title>Interface</title>
+	
+	<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
+	
+	<script type="text/javascript">
+<!--
+
+//---------------------------------------
+// Globals
+//---------------------------------------
+var vis = [];
+var p = [];
+var DX = [];
+var plotId = 0;
+
+var bluePrint = [];
+var r = [];
+
+//---------------------------------------
+// Common Functions
+//---------------------------------------
+function _gel(x) {return document.getElementById(x)}
+
+function doAJAX(target) {
+
+	xmlhttp = (window.XMLHttpRequest)?new XMLHttpRequest():(window.ActiveXObject)?new ActiveXObject("Microsoft.XMLHTTP"):null;
+	
+	if(xmlhttp == null) {// AJAX not supported
+		alert('AJAX not Supported');
+		return;
+	}
+
+	xmlhttp.open("GET", (target) ,false);
+	xmlhttp.send(null);
+	
+	return xmlhttp.responseText;
+}
+
+function spanify( arr ) {
+	var str = '';
+	for( i=0; i<arr.length; i++)
+		str += '<span>' + arr[i] + '</span>';
+	return str;
+}
+
+function unspanify( arr ) {
+	var str = [];
+	for( i=0; i<arr.length; i++)
+		str.push( arr[i].innerHTML );
+	return str;
+}
+
+//---------------------------------------
+// Protovis Data Functions
+//---------------------------------------
+function buildData() {
+	var x = [];
+	var len = 3 + Math.floor(Math.random()*10);
+	for(i=0; i<len; i++)
+		x[i] = Math.random();
+	return x;
+}
+
+function getData( plotType, dataLoc, width, height) { // minimum args = 4
+	this.w = width;
+	this.h = height;
+
+	this.data = JSON.parse( doAJAX( dataLoc ) );
+
+	switch( plotType ) {
+
+	case 'scatterplot':
+		// scatterplot requires 3 more arguments: the names of the x,y,z fields
+		var vx = arguments[4]||'x', vy = arguments[5]||'y', vz = arguments[6]||'z';
+		this.xval 	= new Function("d", "return this.root.x(d." + vx + ")");
+		this.yval 	= new Function("d", "return this.root.y(d." + vy + ")");
+		this.colour = new Function("d", "return this.root.c(d." + vz + ")");
+		this.size 	= new Function("d", "return d." + vz);
+		this.title 	= new Function("d", "return d." + vz + ".toFixed(1)");
+		break;
+
+	case 'focus+zoom':
+		//focus+zoom requires 3 more arguments: height of small graph, and names of x,y fields
+		this.h2 = arguments[4];
+
+		var vx = arguments[5]||'x', vy = arguments[6]||'y';
+		this.x		= new Function("d", "return d." + vx);
+		this.y		= new Function("d", "return d." + vy);
+		this.xval	= new Function("d", "return this.root.x(d." + vx + ")");
+		this.yval	= new Function("d", "return this.root.y(d." + vy + ")");
+		this.fx		= new Function("d", "return this.root.fx(d." + vx + ")");
+		this.fy		= new Function("d", "return this.root.fy(d." + vy + ")");
+		break;
+
+	default:
+		alert('What the heck is a "' + plotType + '" ?!');
+	}
+
+	return this;
+}
+
+function doDataUpdate( command ) {
+
+	var response = JSON.parse( doAJAX( command ) );
+	
+	var u = response.update;
+	
+	for( i=0; i<u.length; i++) {
+	
+		vis[ u[i] ].tdata.data( response[ u[i] ] );
+		vis[ u[i] ].s = false; //removes earlier selection
+		vis[ u[i] ].render();
+	}
+}
+
+function doSelection() {
+	
+}
+
+//---------------------------------------
+// Protovis Source Code Creation
+//---------------------------------------
+function getSource( d ) {
+	var source = '';
+	switch( d.graph ) {
+	
+	case 'Histogram':
+		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' );
+		break;
+		
+	case 'Scatterplot':
+		var gData = 'new getData( "scatterplot",';
+		gData += '"response.json",'; // command - currenly json file
+		gData += '400,400,'; // width and height
+		gData += '"' + d.fields[0].replace('.','_') + '",';
+		gData += '"' + d.fields[1].replace('.','_') + '",';
+		gData += '"' + d.fields[2].replace('.','_') + '")';
+		source = bluePrint.scatterplot.replace(/_DATA/, gData );
+		break;
+	
+	case 'Focus+Context':
+		break;
+	
+	default:
+		//source = bluePrint.histogram.replace(/_DATA/, 'buildData()' );
+		source = bluePrint.scatterplot.replace(/_DATA/, 'new getData( "scatterplot", "data/direct_scplot0.json", 400, 400, "x1", "y1", "z1")' );
+	}
+	
+	source = source.replace(/_VX/g, 'vis["' + d.id + '"]').replace(/_DX/g, 'DX["' + d.id + '"]');
+	return source;
+}
+
+//---------------------------------------
+// Visualization creation, editing and deletion
+//---------------------------------------
+function editingInterface( mouse ) {
+	_gel('edit').style.display = 'block';
+	return false;
+}
+
+function generateVis() {
+
+	// extract parameters
+	var graph = _gel('graphType').getElementsByTagName('div')[0].selected.childNodes[0].nodeValue;
+	var fields = [];
+	var f = _gel('currentFields').getElementsByTagName('span');
+	for( i=0; i<f.length; i++)
+		fields.push( f[i].innerHTML);
+	
+	// create div
+	var d = document.createElement('div');
+	d.id = 'plot' + plotId++;
+	d.className = 'vis';
+	d.graph = graph;
+	d.fields = fields;
+	d.title = 'Right click to edit';
+		
+	// register div
+	p.push( d.id );
+	
+	// insert code into document
+	var script = document.createElement('script');
+	script.innerHTML = getSource(d);
+	
+	d.appendChild( script );
+	document.body.appendChild( d );
+	_gel('main').appendChild(d);
+	d.oncontextmenu = editingInterface;
+	
+	// deselect
+	var oldV = _gel('graphType').getElementsByTagName('div')[0].selected;
+	oldV.className = '';
+	oldV.innerHTML = oldV.childNodes[0].nodeValue;
+	_gel('graphType').getElementsByTagName('div')[0].selected = null;
+	
+	// cleanup current visualization selection: optional
+	//_gel('currentFields').getElementsByTagName('div')[0].innerHTML = '';
+}
+
+function deleteVisualization( x ) {
+	
+	var id = p[x];
+	
+	_gel( id ).parentNode.removeChild( _gel(id) );
+	vis[ id ] = null;
+	DX[ id ] = null;
+	p[ x ] = null;
+}
+
+//---------------------------------------
+// User Interface
+//---------------------------------------
+function updateAvailableVisualizations() {
+
+	// build data
+	var f = _gel('currentFields').getElementsByTagName('span');
+	var av = [];
+	
+	if( f.length > 0 ) {
+		av.push('Test 1');
+		av.push('Test 2');
+		av.push('Test 3');
+	}
+	
+	switch( f.length ) {
+	case 3:
+		av.push( 'Scatterplot' );
+		break;
+		
+	case 2:
+		av.push( 'Focus+Context' );
+		break;
+	
+	case 1:
+		av.push( 'Histogram' );
+		break;
+	}
+	
+	_gel('graphType').getElementsByTagName('div')[0].innerHTML = spanify(av);
+	
+	// build actions
+	var v = _gel('graphType').getElementsByTagName('span');
+	_gel('graphType').getElementsByTagName('div')[0].selected = null;
+	var selectVis = function() {
+		var oldV = this.parentNode.selected;
+		if(oldV) {
+			oldV.className = '';
+			oldV.innerHTML = oldV.childNodes[0].nodeValue;
+		}
+		
+		this.className = 'selected';
+		this.innerHTML += '<input type="button" value="Generate" onmouseup="generateVis()"/>';
+		
+		this.parentNode.selected = this;
+	}
+	for(i=0; i<v.length; i++ )
+		v[i].onclick = selectVis;
+}
+
+function destroyNode() {this.parentNode.removeChild( this );updateAvailableVisualizations()}
+
+function addSelected() {
+	var newNode = this.cloneNode(true);
+	_gel('currentFields').getElementsByTagName('div')[0].appendChild( newNode );
+	newNode.onclick = destroyNode;
+	
+	updateAvailableVisualizations();
+}
+
+function deleteSelected() {
+
+	var fname = this.innerHTML;
+	var relation = /[^\.]*/.exec(fname);
+	var field = fname.replace( relation + '.', '');
+
+	// remove from selected
+	this.parentNode.removeChild( this );
+	
+	// move back into available
+	r[relation].push( field );
+	
+	// remove from current
+	var cs = _gel('currentFields').getElementsByTagName('span');
+	var flag = false;
+	for(i=0; i<cs.length; i++) {
+		if( cs[i].innerHTML == fname) {
+			cs[i].parentNode.removeChild( cs[i] );
+			flag = true;
+			// no break - the same field can appear more than once
+		}
+	}
+	
+	// update list of available visualizations
+	if( flag )
+		updateAvailableVisualizations();
+	
+	// destroy visualizations
+	for(i=0; i<p.length; i++) {
+		
+		if( (_gel( p[i] ).fields).toString().search( fname ) > -1 )
+			deleteVisualization( i );
+	}
+
+	// if necessary, refresh Fields
+	if( _gel('relations').getElementsByTagName('div')[0].selected.innerHTML == relation )
+		buildFields( relation );
+}
+
+function toggleMode( el ) {
+
+	var spans = _gel('selectedFields').getElementsByTagName('span');
+	
+	if( el.value == 'Current Mode: ADD' ) {
+		// switch to delete mode
+		el.value = 'Current Mode: DEL';
+		
+		for(i=0; i<spans.length; i++)
+			spans[i].onclick = deleteSelected;
+	}
+	else {
+		el.value = 'Current Mode: ADD';
+		
+		for(i=0; i<spans.length; i++)
+			spans[i].onclick = addSelected;
+	}
+}
+
+function buildFields( relation ) {	
+
+	_gel('availFields').getElementsByTagName('div')[0].innerHTML = spanify( r[ relation ] );
+	
+	var sF = _gel('selectedFields').getElementsByTagName('div')[0];
+	
+	var selectField = function() { // applies to availFields spans
+		this.onclick = addSelected; // default for selectedFields spans
+		this.innerHTML = relation + '.' + this.innerHTML;
+		sF.appendChild( this );
+		r[ relation ] = unspanify( _gel('availFields').getElementsByTagName('span') );
+	}
+	
+	var f = _gel('availFields').getElementsByTagName('span');
+	for( i=0; i<f.length; i++ )
+		f[i].onclick = selectField;
+		
+	if( _gel('sFMode').value != 'Current Mode: ADD' )
+		toggleMode( _gel('sFMode') );
+	
+}
+
+function getAvailableRelations() {
+	// build data
+	r = JSON.parse(doAJAX('relations.data')); //global
+	_gel('relations').getElementsByTagName('div')[0].innerHTML = spanify(r.relations);
+	
+	// build actions
+	var rels = _gel('relations').getElementsByTagName('span');
+	_gel('relations').getElementsByTagName('div')[0].selected = null;
+	
+	var selectRelation = function() {
+		if(this.parentNode.selected)
+			this.parentNode.selected.className = '';
+		this.parentNode.selected = this;
+		this.className = 'selected';
+		buildFields( this.innerHTML );
+	}
+	
+	for( i=0; i<rels.length; i++)
+		rels[i].onclick = selectRelation;
+}
+
+function testButton() {
+	deleteVisualization( 0 );
+}
+
+function setSize() {
+	_gel('main').style.width = (window.innerWidth || document.documentElement.clientWidth) - 570 + 'px';
+	_gel('main').style.height = (window.innerHeight || document.documentElement.clientHeight) - 20 + 'px';
+	_gel('edit').style.width = (window.innerWidth || document.documentElement.clientWidth) + 'px';
+	_gel('edit').style.height = (window.innerHeight || document.documentElement.clientHeight) + 'px';
+}
+
+window.onload = function() {
+	setSize();
+	window.onresize = setSize;
+	_gel('closeBox').onclick = function(){_gel('edit').style.display = 'none'};
+	
+	getAvailableRelations();
+	bluePrint.histogram = doAJAX('Histogram.data');
+	bluePrint.scatterplot = doAJAX('Scatterplot.data');
+	
+}
+//-->
+	</script>
+	<style type="text/css">
+html, body {background:#EEE;width:100%;height:100%;overflow:hidden}
+body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
+
+#edit {
+	position:absolute;
+	z-index:5;
+	background:rgba(0,0,0,0.8);
+	display:none;
+}
+#box {
+	width:750px;height:500px;
+	background:#CCC;color:#333;
+	position:absolute;
+	left:50%;top:50%;
+	margin:-255px 0px 0px -380px;
+	border:5px #DDD solid;
+	-webkit-border-radius:19px;
+	-webkit-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
+}
+#closeBox {
+	line-height:30px;
+	width:30px;
+	background-color:rgba(180,0,0,1);
+	color:#EEE;
+	float:right;
+	margin:8px 8px 0px 0px;
+	-webkit-border-radius:8px;
+	cursor:pointer;
+}
+#closeBox:hover {background:rgba(220,0,0,1);color:#FFF;}
+
+#box h2 {}
+
+
+
+
+#main {
+	background:white;
+	position:absolute;
+	top:10px;
+	left:10px;
+	overflow:auto;
+}
+
+#relations {
+	margin:0px;
+	display:block;
+	float:right;
+	width:200px;
+	height:100%;
+	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#CCC), to(#666));
+	text-align:left;
+}
+#relations h2 {font-size:20px;color:#333;text-align:center}
+#relations span {display:block;line-height:40px;padding-left:20px;cursor:default}
+#relations span:hover {background:#666}
+#relations span.selected {color:#DDD;background:#333}
+
+/* current graph stuff */
+#currentGraph {
+	display:block;
+	float:right;
+	width:350px;
+	height:100%;
+	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#333), to(#666));
+}
+#currentGraph h2 {font-size:20px;color:#AAA;text-align:center}
+#availFields, #selectedFields, #currentFields, #graphType {
+	margin:0px 10px 20px 10px;
+	background:#CCC;
+	padding:1px 10px 10px 10px;
+	text-align:left;
+	
+	-webkit-border-top-right-radius:23px;
+	-moz-border-radius-topright:23px;
+}
+#availFields span, #selectedFields span, #currentFields span {
+	font-size:9px;
+	line-height:19px;
+	text-transform:uppercase;
+	background:#EEE;
+	padding:1px 3px;
+	display:inline-block;
+	margin:2px;
+	border:1px #AAA solid;
+	cursor:pointer;
+	-webkit-border-radius:5px;
+}
+#availFields span:hover, #selectedFields span:hover, #currentFields span:hover {
+	background:#F5F5F5;border-style:dashed;
+	-webkit-box-shadow:3px 2px 3px rgba(0,0,0,0.5);
+}
+
+#sFMode {
+	display:inline-block;
+	float:right;
+	margin-top:-37px;
+}
+
+#graphType span {
+	margin:10px;
+	padding:10px;
+	display:block;
+	background:#E7E7E7;
+	border:1px #555 solid;
+	cursor:pointer;
+}
+#graphType span:hover {background:#555;color:#DDD}
+#graphType span.selected {background:#333;color:#DDD}
+#graphType input {
+	margin:0px;
+	margin-top:-2px;
+	float:right;
+}
+
+
+/* end: current graph stuff */
+
+.vis {border:1px black solid; float:left; padding:20px;}
+
+	</style>
+	
+</head>
+
+<body>
+
+<div id="edit">
+<div id="box">
+	<div id="closeBox">X</div>
+	<h2>Edit Visualization</h2>
+	<div id="link">
+		<h3>Link with other visualizations</h3>
+	</div>
+</div>
+</div>
+
+<div id="main">
+
+</div>
+
+<div id="relations">
+	<h2>Available Relations</h2>
+	<div>Loading..</div>
+</div>
+
+<div id="currentGraph">
+	<h2>Select Fields</h2>
+	
+	<div id="availFields">
+		<p>Available Fields</p>
+		<div></div>
+	</div>
+	
+	<div id="selectedFields">
+		<p>Selected Fields</p>
+		<input type="button"  id="sFMode" value="Current Mode: ADD" onclick="toggleMode(this)" title="Click to toggle mode"/>
+		<div></div>
+	</div>
+	
+	<div id="currentFields">
+		<p>Current Visualization</p>
+		<div></div>
+	</div>
+	
+	<div id="graphType">
+		<p>Available Visualizations</p>
+		<div></div>
+	</div>
+	
+</div>
+
+<input type="button"  value="TEST" onclick="testButton()" style="position:absolute; right:0px; bottom:0px; z-index:5"/>
+
+</body>
+</html>

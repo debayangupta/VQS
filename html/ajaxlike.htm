@@ -1,0 +1,68 @@
+<html>
+<head>
+	<title>Switchtry</title>
+	<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
+	<script type="text/javascript">
+<!--
+
+function _gel(x) {return document.getElementById(x)}
+
+function doAJAX(target) {
+
+	xmlhttp = (window.XMLHttpRequest)?new XMLHttpRequest():(window.ActiveXObject)?new ActiveXObject("Microsoft.XMLHTTP"):null;
+	
+	if(xmlhttp == null) {// AJAX not supported
+		alert('AJAX not Supported');
+		return;
+	}
+
+	xmlhttp.open("GET", (target) ,false);
+	xmlhttp.send(null);
+	
+	return xmlhttp.responseText;
+}
+
+var plotId = 0;
+var bargraph = doAJAX('bargraph.jsData');
+
+function buildData() {
+	var x = [];
+	var len = 3 + Math.floor(Math.random()*10);
+	for(i=0; i<len; i++)
+		x[i] = Math.random();
+	return x;
+}
+
+function addVisualization() {
+	var div = document.createElement('div');
+	div.id = 'plot' + (++plotId);
+	div.className = 'X';
+	
+	var script = document.createElement('script');
+	script.innerHTML = bargraph;
+	
+	document.body.appendChild( div );
+	div.appendChild( script );
+}
+
+window.onload = function() {
+	_gel('add').onclick = addVisualization;
+}
+//-->
+	</script>
+	
+	<style type="text/css">
+.X {border:1px black solid; float:left; padding:20px;}
+#Y {float:right}
+	</style>
+	
+</head>
+
+<body>
+
+<div id="Y">
+	<input type="button" id="add" value="add"/>
+</div>
+
+</body>
+</html>

@@ -158,17 +158,38 @@ function getSource( d ) {
 // Visualization creation, editing and deletion
 //---------------------------------------
 function editingInterface( mouse ) {
-	_gel('edit').style.display = 'block';
+
+    var linksid = 'linkscenter';
+
+    if(_gel (linksid) != null)
+        _gel(linksid).parentNode.removeChild(_gel(linksid));
+        
+    _gel('edit').style.display = 'block';
 	
 	var l = _gel('selectedFields').getElementsByTagName('span');
 	var linkStr = '';
+    
+    ldata = bluePrint.linktree.replace(/_SOURCE/, '"' + this.innerHTML + '"' );
+    
+    linkStr = '["' + this.innerHTML + '"';
 	for(i=0; i< l.length; i++) {
 		if( l[i] != this )
-			linkStr += ', ' + l[i].outerHTML;
+			linkStr += ', "' + l[i].innerHTML + '"';
 	}
-	
-	_gel('links').innerHTML = '<p>Clicked:' + this.outerHTML + '</p><p>Selected Fields:' + linkStr.replace(', ','') + '</p>';
-	return false;
+    linkStr += ']';
+    ldata = ldata.replace(/_SELECTED/g, linkStr);
+    
+    var ld = document.createElement('div');
+    ld.id = linksid;
+    
+    var lscript = document.createElement('script');
+    lscript.innerHTML = ldata;
+    ld.appendChild(lscript);
+    
+    document.body.appendChild( ld );
+    _gel('links').appendChild( ld );
+    
+    return false;
 }
 
 function generateVis() {
@@ -404,7 +425,7 @@ window.onload = function() {
 	getAvailableRelations();
 	bluePrint.histogram = doAJAX('Histogram.data');
 	bluePrint.scatterplot = doAJAX('Scatterplot.data');
-	
+	bluePrint.linktree = doAJAX('linktree.data');
 }
 //-->
 	</script>

@@ -1,9 +1,6 @@
 {
-	"relations": ["Table One", "Table Two", "Scplot", "Table Four", "Table Five"],
+	"relations": ["abbrv", "fooddesc"],
 
-	"Table One":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven", "Field Eight", "Field Nine"],
-	"Table Two":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven", "Field Eight", "Field Nine", "Field Ten", "Field Eleven"], 
-	"Scplot":	["Field One", "x1", "Field Three", "Field Four", "z1", "y1", "Field Seven", "Field Eight"], 
-	"Table Four":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five"], 
-	"Table Five":	["Field One", "Field Two", "Field Three", "Field Four", "Field Five", "Field Six", "Field Seven"]
+	"abbrv":	["NDB_No", "Shrt_Desc", "Water", "Energ_Kcal", "Protein", "Lipid_Tot", "Ash", "Carbohydrate", "Fiber_TD", "Sugar_Tot", "Calcium", "Iron", "Magnesium", "Phosphorus", "Potassium", "Sodium", "Zinc", "Copper", "Manganese", "Selenium", "Vit_C", "Thiamin", "Riboflavin", "Niacin", "Panto_acid", "Vit_B", "Folate_Tot", "Folic_acid", "Food_Folate", "Folate_DFE", "Choline_Tot", "Vit_B12", "Vit_A_IU", "Vit_A_RAE", "Retinol", "Alpha_Carot", "Beta_Carot", "Beta_Crypt", "Lycopene", "Lut+Zea", "Vit_E", "Vit_D_mcg", "Vit_D_IU", "Vit_K", "FA_Sat", "FA_Mono", "FA_Poly", "Cholestrl", "GmWt_1", "GmWt_Desc1", "GmWt_2", "GmWt_Desc2", "Refuse_Pct", "Group_Code"],
+	"fooddesc":	["Group_Code", "Food_Desc"]	
 }

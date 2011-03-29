@@ -1,0 +1,104 @@
+{
+  "fooddesc" : [
+    {
+      "Group_Code" : "0100",
+      "Food_Desc" : "Dairy and Egg Products"
+    },
+    {
+      "Group_Code" : "0200",
+      "Food_Desc" : "Spices and Herbs"
+    },
+    {
+      "Group_Code" : "0300",
+      "Food_Desc" : "Baby Foods"
+    },
+    {
+      "Group_Code" : "0400",
+      "Food_Desc" : "Fats and Oils"
+    },
+    {
+      "Group_Code" : "0500",
+      "Food_Desc" : "Poultry Products"
+    },
+    {
+      "Group_Code" : "0600",
+      "Food_Desc" : "Soups, Sauces, and Gravies"
+    },
+    {
+      "Group_Code" : "0700",
+      "Food_Desc" : "Sausages and Luncheon Meats"
+    },
+    {
+      "Group_Code" : "0800",
+      "Food_Desc" : "Breakfast Cereals"
+    },
+    {
+      "Group_Code" : "0900",
+      "Food_Desc" : "Fruits and Fruit Juices"
+    },
+    {
+      "Group_Code" : "1000",
+      "Food_Desc" : "Pork Products"
+    },
+    {
+      "Group_Code" : "1100",
+      "Food_Desc" : "Vegetables and Vegetable Products"
+    },
+    {
+      "Group_Code" : "1200",
+      "Food_Desc" : "Nut and Seed Products"
+    },
+    {
+      "Group_Code" : "1300",
+      "Food_Desc" : "Beef Products"
+    },
+    {
+      "Group_Code" : "1400",
+      "Food_Desc" : "Beverages"
+    },
+    {
+      "Group_Code" : "1500",
+      "Food_Desc" : "Finfish and Shellfish Products"
+    },
+    {
+      "Group_Code" : "1600",
+      "Food_Desc" : "Legumes and Legume Products"
+    },
+    {
+      "Group_Code" : "1700",
+      "Food_Desc" : "Lamb, Veal, and Game Products"
+    },
+    {
+      "Group_Code" : "1800",
+      "Food_Desc" : "Baked Products"
+    },
+    {
+      "Group_Code" : "1900",
+      "Food_Desc" : "Sweets"
+    },
+    {
+      "Group_Code" : "2000",
+      "Food_Desc" : "Cereal Grains and Pasta"
+    },
+    {
+      "Group_Code" : "2100",
+      "Food_Desc" : "Fast Foods"
+    },
+    {
+      "Group_Code" : "2200",
+      "Food_Desc" : "Meals, Entrees, and Sidedishes"
+    },
+    {
+      "Group_Code" : "2500",
+      "Food_Desc" : "Snacks"
+    },
+    {
+      "Group_Code" : "3500",
+      "Food_Desc" : "Ethnic Foods"
+    },
+    {
+      "Group_Code" : "3600",
+      "Food_Desc" : "Restaurant Foods"
+    }
+  ]
+}

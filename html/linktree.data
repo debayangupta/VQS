@@ -42,22 +42,19 @@ ltree = pv.tree(special)
     .map();
 
 linksvis = new pv.Panel()
-    .width(500)
-    .height(375)
-    .bottom(20)
-    .left(100)
-    .right(200)
-    .top(5);
+    .width(800)
+    .height(600);
 
-tree = linksvis.add(pv.Layout.Cluster)
+tree = linksvis.add(pv.Layout.Tree)
     .nodes(pv.dom(ltree).root(lsource).nodes())
     .group(true)
-    .orient("left");
+    .depth(100)
+    .orient("radial");
 
 tree.node.add(pv.Dot)
 	.fillStyle(function(n) n.nodeName == lsource ? "#ff7f0e" : (n.nodeName in inarray(_SELECTED) ? "#ff7f0e" : "#aec7e8"));
 
-tree.label.add(pv.Label);
+tree.label.add(pv.Label).font("9px sans-serif");
 
 tree.link.add(pv.Line)
     .strokeStyle("#ccc")

@@ -159,6 +159,15 @@ function getSource( d ) {
 //---------------------------------------
 function editingInterface( mouse ) {
 	_gel('edit').style.display = 'block';
+	
+	var l = _gel('selectedFields').getElementsByTagName('span');
+	var linkStr = '';
+	for(i=0; i< l.length; i++) {
+		if( l[i] != this )
+			linkStr += ', ' + l[i].outerHTML;
+	}
+	
+	_gel('links').innerHTML = '<p>Clicked:' + this.outerHTML + '</p><p>Selected Fields:' + linkStr.replace(', ','') + '</p>';
 	return false;
 }
 
@@ -189,7 +198,6 @@ function generateVis() {
 	d.appendChild( script );
 	document.body.appendChild( d );
 	_gel('main').appendChild(d);
-	d.oncontextmenu = editingInterface;
 	
 	// deselect
 	var oldV = _gel('graphType').getElementsByTagName('div')[0].selected;
@@ -341,6 +349,7 @@ function buildFields( relation ) {
 			toggleMode( _gel('sFMode') );
 			
 		this.onclick = addSelected; // default for selectedFields spans
+		this.oncontextmenu = editingInterface;
 		this.innerHTML = relation + '.' + this.innerHTML;
 		sF.appendChild( this );
 		r[ relation ] = unspanify( _gel('availFields').getElementsByTagName('span') );
@@ -402,6 +411,8 @@ window.onload = function() {
 	<style type="text/css">
 html, body {background:#EEE;width:100%;height:100%;overflow:hidden}
 body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
+::-moz-selection{background-color:transparent;}
+::selection{background-color:transparent;}/*IE..sigh.. IE8 ignores it*/
 
 #edit {
 	position:absolute;
@@ -414,7 +425,8 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	background:#CCC;color:#333;
 	position:absolute;
 	left:50%;top:50%;
-	margin:-255px 0px 0px -380px;
+	margin:-260px 0px 0px -380px;
+	padding:10px;
 	border:5px #DDD solid;
 	-webkit-border-radius:19px;
 	-webkit-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
@@ -431,9 +443,19 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 }
 #closeBox:hover {background:rgba(220,0,0,1);color:#FFF;}
 
-#box h2 {}
-
-
+#links {text-align:left;}
+#links p {line-height:25px;}
+#links span {
+	font-size:10px;
+	text-transform:uppercase;
+	font-weight:bold;
+	background:#EEE;
+	display:inline-block;
+	line-height:20px;
+	border:1px #222 solid;
+	margin:5px;
+	padding:2px;
+}
 
 
 #main {
@@ -529,10 +551,8 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 <div id="edit">
 <div id="box">
 	<div id="closeBox">X</div>
-	<h2>Edit Visualization</h2>
-	<div id="link">
-		<h3>Link with other visualizations</h3>
-	</div>
+	<h2>Links</h2>
+	<div id="links"></div>
 </div>
 </div>
 

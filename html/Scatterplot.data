@@ -9,13 +9,13 @@ _VX = new pv.Panel()
     .right(10)
     .top(5);
 
-//links
-_VX.links = [];
+//_VX.links = [];
+_VX.selectionArgs = 2;
 
 /* scales. */
-_VX.x = pv.Scale.linear(0, 99).range(0, _DX.h);
-_VX.y = pv.Scale.linear(0, 1).range(0, _DX.h);
-_VX.c = pv.Scale.log(1, 100).range("blue", "black");
+_VX.x = pv.Scale._SCALE(0, 99).range(0, _DX.h);
+_VX.y = pv.Scale._SCALE(0, 1).range(0, _DX.h);
+_VX.c = pv.Scale._SCALE(0, 100).range("blue", "black");
 
 _VX.updating = false;
 
@@ -64,17 +64,34 @@ _VX.updateLinks = function(d) {
 
 }
 _VX.doUpdate = function(d, src) {
-	if( this.root.updating ) return;
+	
+	if( this.root.updating )
+		return;
+		
+	if( this.root.selectionArgs < 1 )
+		return;
 	
 	var x = this.root.x( src.x.invert(d.x) );
 	var dx = this.root.x(src.x.invert(d.x + d.dx)) - x;
 	
-	//CHANGE THIS!!
-	var y = 0;
-	var dy = _DX.w;
+	var y,dy;
+	if( this.root.selectionArgs > 1 ) {
+		y = this.root.y( src.y.invert(d.y) );
+		dy = this.root.y(src.y.invert(d.y + d.dy)) - y;
+	}
+	else {
+		y = 0;
+		dy = _DX.w;
+	}
 	
 	this.root.s = true;
 	this.root.selection.data([{x:x, y:y, dx:dx, dy:dy}]);
+	this.root.render();
+}
+
+_VX.dataUpdate = function( newData ) {
+	this.root.tdata.data( newData );
+	this.root.s = false; //removes earlier selection
 	this.root.render();
 }
 

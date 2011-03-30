@@ -32,6 +32,9 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 	case 'scatterplot':
 		// scatterplot requires 3 more arguments: the names of the x,y,z fields
 		var vx = arguments[4]||'x', vy = arguments[5]||'y', vz = arguments[6]||'z';
+		this.x		= new Function("d", "return d." + vx);
+		this.y		= new Function("d", "return d." + vy);
+		this.z		= new Function("d", "return d." + vz);
 		this.xval 	= new Function("d", "return this.root.x(d." + vx + ")");
 		this.yval 	= new Function("d", "return this.root.y(d." + vy + ")");
 		this.colour = new Function("d", "return this.root.c(d." + vz + ")");
@@ -65,12 +68,8 @@ function doDataUpdate( command ) {
 	
 	var u = response.update;
 	
-	for( i=0; i<u.length; i++) {
-	
-		vis[ u[i] ].tdata.data( response[ u[i] ] );
-		vis[ u[i] ].s = false; //removes earlier selection
-		vis[ u[i] ].render();
-	}
+	for( i=0; i<u.length; i++)
+		vis[ u[i] ].dataUpdate( response[ u[i] ] );
 }
 
 function doSelection() {

@@ -1,7 +1,0 @@
-var vis = new pv.Panel().width(200).height(150);
-var dx = buildData();
-var barWidth = 200/dx.length;
-var gap = 5;
-vis.x = pv.Scale.linear(0, pv.max(dx)).range(0, 150);
-vis.add(pv.Bar).data(dx).width( barWidth-gap ).height(function(d) {return this.root.x(d)}).bottom(0).left(function() {return this.index * barWidth});
-vis.render();

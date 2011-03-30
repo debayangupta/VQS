@@ -70,7 +70,7 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 	this.h = height;
 
 	this.data = JSON.parse( doAJAX( dataLoc ) );
-
+	
 	switch( plotType ) {
 
 	case 'scatterplot':
@@ -83,8 +83,8 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 		this.title 	= new Function("d", "return d." + vz + ".toFixed(1)");
 		break;
 
-	case 'focus+zoom':
-		//focus+zoom requires 3 more arguments: height of small graph, and names of x,y fields
+	case 'focus_context':
+		//focus+context requires 3 more arguments: height of small graph, and names of x,y fields
 		this.h2 = arguments[4];
 
 		var vx = arguments[5]||'x', vy = arguments[6]||'y';
@@ -109,12 +109,8 @@ function doDataUpdate( command ) {
 	
 	var u = response.update;
 	
-	for( i=0; i<u.length; i++) {
-	
-		vis[ u[i] ].tdata.data( response[ u[i] ] );
-		vis[ u[i] ].s = false; //removes earlier selection
-		vis[ u[i] ].render();
-	}
+	for( i=0; i<u.length; i++)
+		vis[ u[i] ].dataUpdate( response[ u[i] ] );
 }
 
 function doSelection() {
@@ -129,27 +125,29 @@ function getSource( d ) {
 	switch( d.graph ) {
 	
 	case 'Histogram':
-		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' );
+		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' ).replace(/_SCALE/, d.scale[0]);
 		break;
 		
 	case 'Scatterplot':
 		var gData = 'new getData( "scatterplot",';
-		gData += '"response.json",'; // command - currenly json file
+		gData += '"data/response.json",'; // command - currenly json file
 		gData += '400,400,'; // width and height
 		gData += '"' + d.fields[0].replace('.','_') + '",';
 		gData += '"' + d.fields[1].replace('.','_') + '",';
 		gData += '"' + d.fields[2].replace('.','_') + '")';
-		source = bluePrint.scatterplot.replace(/_DATA/, gData );
+		source = bluePrint.scatterplot.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]).replace(/_SCALE/, d.scale[1]).replace(/_SCALE/, d.scale[2]);
 		break;
 	
 	case 'Focus+Context':
+		source = bluePrint.focus_context;
 		break;
 	
 	default:
-		//source = bluePrint.histogram.replace(/_DATA/, 'buildData()' );
-		source = bluePrint.scatterplot.replace(/_DATA/, 'new getData( "scatterplot", "data/direct_scplot0.json", 400, 400, "x1", "y1", "z1")' );
+		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' ).replace(/_SCALE/, 'linear' );
+		//source = bluePrint.scatterplot.replace(/_DATA/, 'new getData( "scatterplot", "data/direct_scplot0.json", 400, 400, "x1", "y1", "z1")' );
 	}
 	
+	source = source.replace(/log\(0/g, 'log(1');
 	source = source.replace(/_VX/g, 'vis["' + d.id + '"]').replace(/_DX/g, 'DX["' + d.id + '"]');
 	return source;
 }
@@ -158,48 +156,53 @@ function getSource( d ) {
 // Visualization creation, editing and deletion
 //---------------------------------------
 function editingInterface( mouse ) {
-
-    var linksid = 'linkscenter';
-
-    if(_gel (linksid) != null)
-        _gel(linksid).parentNode.removeChild(_gel(linksid));
-        
-    _gel('edit').style.display = 'block';
+	// visuals
+	_gel('edit').style.display = 'block';
 	
+	// get current selection
 	var l = _gel('selectedFields').getElementsByTagName('span');
-	var linkStr = '';
-    
-    ldata = bluePrint.linktree.replace(/_SOURCE/, '"' + this.innerHTML + '"' );
-    
-    linkStr = '["' + this.innerHTML + '"';
+	var selected = '[ \'' + this.innerHTML + '\'';
 	for(i=0; i< l.length; i++) {
 		if( l[i] != this )
-			linkStr += ', "' + l[i].innerHTML + '"';
+			selected += ',\'' + l[i].innerHTML + '\'';
 	}
-    linkStr += ']';
-    ldata = ldata.replace(/_SELECTED/g, linkStr);
-    
-    var ld = document.createElement('div');
-    ld.id = linksid;
-    
-    var lscript = document.createElement('script');
-    lscript.innerHTML = ldata;
-    ld.appendChild(lscript);
-    
-    document.body.appendChild( ld );
-    _gel('links').appendChild( ld );
-    
-    return false;
+	selected += ']';
+
+	// clear any earlier graph
+	_gel('links').innerHTML = '';
+	
+	// create protovis source for the new graph
+	var lscript = document.createElement('script');
+	lscript.innerHTML = bluePrint.linktree.replace(/_SOURCE/, '\'' + this.innerHTML + '\'' ).replace(/_SELECTED/g, selected);
+	
+	// add to new graph
+	var ld = document.createElement('div');
+	ld.id = 'linkscenter';
+	ld.appendChild( lscript );
+	
+	document.body.appendChild( ld );
+	_gel('links').appendChild( ld );
+	
+	return false;
 }
 
 function generateVis() {
 
+	// selected plot
+	var oldV = _gel('graphType').getElementsByTagName('div')[0].selected;
+
 	// extract parameters
-	var graph = _gel('graphType').getElementsByTagName('div')[0].selected.childNodes[0].nodeValue;
-	var fields = [];
+	var graph = oldV.childNodes[0].nodeValue;
+	
 	var f = _gel('currentFields').getElementsByTagName('span');
+	var fields = [];
 	for( i=0; i<f.length; i++)
-		fields.push( f[i].innerHTML);
+		fields.push( f[i].innerHTML );
+		
+	var s = _gel('graphOptions').getElementsByTagName('span');
+	var scale = [];
+	for( i=0; i<s.length; i++)
+		scale.push( s[i].scale? s[i].scale:'linear' );
 	
 	// create div
 	var d = document.createElement('div');
@@ -207,8 +210,19 @@ function generateVis() {
 	d.className = 'vis';
 	d.graph = graph;
 	d.fields = fields;
-	d.title = 'Right click to edit';
+	d.scale = scale;
 		
+	// link to all previous divs
+	vis[ d.id ] = [];
+	vis[ d.id ].links = [];
+	for(i=0; i<p.length; i++)
+	if(p[i]) {
+		if(!vis[ p[i] ].links)
+			vis[ p[i] ].links = [];
+		vis[ p[i] ].links.push( d.id );
+		vis[ d.id ].links.push( p[i] );
+	}
+	
 	// register div
 	p.push( d.id );
 	
@@ -221,7 +235,6 @@ function generateVis() {
 	_gel('main').appendChild(d);
 	
 	// deselect
-	var oldV = _gel('graphType').getElementsByTagName('div')[0].selected;
 	oldV.className = '';
 	oldV.innerHTML = oldV.childNodes[0].nodeValue;
 	_gel('graphType').getElementsByTagName('div')[0].selected = null;
@@ -243,6 +256,51 @@ function deleteVisualization( x ) {
 //---------------------------------------
 // User Interface
 //---------------------------------------
+function toggleScale(el) {
+	this.event.stopPropagation();
+	
+	var op;
+	if( el.scale=='log') {
+		el.scale = 'linear';
+		op = 'log';
+	}
+	else {
+		el.scale = 'log';
+		op = 'linear';
+	}
+	
+	el.innerHTML = el.innerHTML.replace( el.scale, op).replace( op, el.scale );
+}
+function genOptions( g ) {
+	var str = '<div id="graphOptions">';
+	
+	var scale = '<span scale="linear" onclick="toggleScale(this)">_VAR: linear (click to switch to log)</span>';
+	
+	switch( g ) {
+	
+	case 'Histogram':
+		str += scale.replace(/_VAR/g, 'x');
+		break;
+		
+	case 'Scatterplot':
+		str += scale.replace(/_VAR/g, 'x');
+		str += scale.replace(/_VAR/g, 'y');
+		str += scale.replace(/_VAR/g, 'z');
+		break;
+	
+	case 'Focus+Context':
+		str += scale.replace(/_VAR/g, 'x');
+		str += scale.replace(/_VAR/g, 'y');
+		break;
+	
+	default:
+		str += '!!!';
+	}
+	
+	str += '</div>';
+	return str;
+}
+
 function updateAvailableVisualizations() {
 
 	// build data
@@ -282,8 +340,7 @@ function updateAvailableVisualizations() {
 		}
 		
 		this.className = 'selected';
-		this.innerHTML += '<input type="button" value="Generate" onmouseup="generateVis()"/>';
-		
+		this.innerHTML += '<input type="button" value="Generate" onmouseup="generateVis()"/>' + genOptions( this.innerHTML );
 		this.parentNode.selected = this;
 	}
 	for(i=0; i<v.length; i++ )
@@ -423,8 +480,11 @@ window.onload = function() {
 	_gel('edit').onclick = function(){_gel('edit').style.display = 'none'};
 	
 	getAvailableRelations();
+	
 	bluePrint.histogram = doAJAX('Histogram.data');
 	bluePrint.scatterplot = doAJAX('Scatterplot.data');
+	bluePrint.focus_context = doAJAX('focus_context.data');
+	
 	bluePrint.linktree = doAJAX('linktree.data');
 }
 //-->
@@ -442,15 +502,15 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	display:none;
 }
 #box {
-	width:800px;height:610px;
-	background:#fff;color:#333;
+	width:900px;height:700px;
+	background:#CCC;color:#333;
 	position:absolute;
 	left:50%;top:50%;
-	margin:-380px 0px 0px -380px;
-	padding:0px;
-	border:0px #DDD solid;
-	-webkit-border-radius:0px;
-	-webkit-box-shadow:0px 0px 0px rgba(0,0,0,0.8);
+	margin:-350px 0px 0px -450px;
+	padding:10px;
+	border:5px #DDD solid;
+	-webkit-border-radius:19px;
+	-webkit-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
 }
 #closeBox {
 	line-height:30px;
@@ -464,20 +524,10 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 }
 #closeBox:hover {background:rgba(220,0,0,1);color:#FFF;}
 
-#links {text-align:left;}
-#links p {line-height:25px;}
-#links span {
-	font-size:10px;
-	text-transform:uppercase;
-	font-weight:bold;
-	background:#fff;
-	display:inline-block;
-	line-height:20px;
-	border:0px #222 solid;
-	margin:0px;
-	padding:0px;
+#links {
+	margin:0px auto;
+	background:#FFF; /* background colour for link visualization */
 }
-
 
 #main {
 	background:white;
@@ -508,6 +558,7 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	width:350px;
 	height:100%;
 	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#333), to(#666));
+	overflow:auto;
 }
 #currentGraph h2 {font-size:20px;color:#AAA;text-align:center}
 #availFields, #selectedFields, #currentFields, #graphType {
@@ -552,12 +603,23 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 }
 #graphType span:hover {background:#555;color:#DDD}
 #graphType span.selected {background:#333;color:#DDD}
+
 #graphType input {
 	margin:0px;
 	margin-top:-2px;
 	float:right;
 }
-
+#graphOptions {
+	margin-top:10px;
+	display:block;
+}
+#graphOptions span {
+	display:block;
+	margin:5px 10px;
+	font-size:12px;
+	background:#333;
+	color:#AAA;
+}
 
 /* end: current graph stuff */
 
@@ -571,6 +633,8 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 
 <div id="edit">
 <div id="box">
+	<div id="closeBox">X</div>
+	<h2>Links</h2>
 	<div id="links"></div>
 </div>
 </div>

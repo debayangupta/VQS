@@ -1,0 +1,145 @@
+_DX = new getData( 'focus_context', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
+
+// Root panel. 
+_VX = new pv.Panel()
+    .width(_DX.w)
+    .height(_DX.h + 20 + _DX.h2)
+    .bottom(20)
+    .left(30)
+    .right(20)
+    .top(5);
+
+// Scales and sizing. 
+_VX.x = pv.Scale.linear(0, pv.max(_DX.data, _DX.x)).range(0, _DX.w);
+_VX.y = pv.Scale.linear(0, pv.max(_DX.data, _DX.y)).range(0, _DX.h2); //how to get max
+
+// Interaction state. Focus scales will have domain set on-render. 
+_VX.i = {x:0, dx:0};	// initial state
+_VX.fx = pv.Scale.linear().range(0, _DX.w);
+_VX.fy = pv.Scale.linear().range(0, _DX.h);
+
+_VX.updating = false;
+
+//updation
+_VX.doUpdate = function(d, src) {
+	if( this.root.updating ) return;
+
+	var x = src.x.invert(d.x);
+	var dx = src.x.invert(d.dx);
+	
+	_VX.i.x = this.root.x( x );
+	_VX.i.dx = this.root.x( dx );
+	_VX.render();
+}
+
+_VX.updateLinks = function(d) {
+
+	var L = this.root.links;
+	this.root.updating = true;
+	for(i=0; i<L.length; i++)
+		vis[ L[i] ].doUpdate(d, this.root);
+	this.root.updating = false;
+}
+
+_VX.dataUpdate = function( newData ) {
+	this.root.tdata.data( newData );
+	this.root.s = false; //removes earlier selection
+	this.root.i.x = 0;
+	this.root.i.dx = 0;
+	this.root.focus.init();
+	this.root.render();
+}
+
+// Focus panel (zoomed in). 
+_VX.focus = _VX.add(pv.Panel)
+    .def("init", function() {
+		var i = _VX.i;
+        var d1 = this.root.x.invert(i.x),
+            d2 = this.root.x.invert(i.x + i.dx),
+            dd = _DX.data.slice(
+                Math.max(0, pv.search.index(_DX.data, d1, _DX.x ) - 1),
+                pv.search.index(_DX.data, d2, _DX.x ) + 1);
+        this.root.fx.domain(d1, d2);
+        this.root.fy.domain(scale.checked ? [0, pv.max(dd, _DX.y)] : _VX.y.domain());
+		this.root.updateLinks(i);
+        return dd;
+      })
+    .top(0)
+    .height(_DX.h);
+
+// X-axis ticks. 
+_VX.focus.add(pv.Rule)
+    .data(function() {return this.root.fx.ticks()})
+    .left(_VX.fx)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(_VX.fx.tickFormat);
+
+// Y-axis ticks. 
+_VX.focus.add(pv.Rule)
+    .data(function() {return this.root.fy.ticks(7)})
+    .bottom(_VX.fy)
+    .strokeStyle(function(d) {return d ? "#aaa" : "#000"})
+  .anchor("left").add(pv.Label)
+    .text(_VX.fy.tickFormat);
+
+// Focus area chart. 
+_VX.focus.add(pv.Panel)
+    .overflow("hidden")
+  .add(pv.Area)
+    .data(function() {return this.root.focus.init()})
+    .left(_DX.fx)
+    .bottom(1)
+    .height(_DX.fy)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .fillStyle(null)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+// Context panel (zoomed out). 
+_VX.Context = [];
+_VX.Context = _VX.add(pv.Panel) //CHANGE TO INNER
+    .bottom(0)
+    .height(_DX.h2);
+
+// X-axis ticks. 
+_VX.Context.add(pv.Rule)
+    .data(_VX.x.ticks())
+    .left(_VX.x)
+    .strokeStyle("#eee")
+  .anchor("bottom").add(pv.Label)
+    .text(_VX.x.tickFormat);
+
+// Y-axis ticks. 
+_VX.Context.add(pv.Rule)
+    .bottom(0);
+
+// Context area chart. 
+_VX.tdata = _VX.Context.add(pv.Area);
+_VX.tdata.data(_DX.data)
+    .left(_DX.xval)
+    .bottom(1)
+    .height(_DX.yval)
+    .fillStyle("lightsteelblue")
+  .anchor("top").add(pv.Line)
+    .strokeStyle("steelblue")
+    .lineWidth(2);
+
+// The selectable, draggable focus region. 
+_VX.Context.add(pv.Panel)
+    .data([_VX.i])
+    .cursor("crosshair")
+    .events("all")
+    .event("mousedown", pv.Behavior.select())
+    .event("select", _VX.focus)
+  .add(pv.Bar)
+    .left(function(d) {return d.x})
+    .width(function(d) {return d.dx})
+    .fillStyle("rgba(255, 128, 128, .4)")
+    .cursor("move")
+    .event("mousedown", pv.Behavior.drag())
+    .event("drag", _VX.focus);
+alert(23);
+_VX.render();
+alert(23);

@@ -65,7 +65,8 @@ vis[ p[0] ].add(pv.Rule)
 
 /* The dot plot! */
 vis[ p[0] ].tdata = vis[ p[0] ].add(pv.Panel);
-    vis[ p[0] ].tdata.data(DX[ p[0] ].data)
+
+vis[ p[0] ].tdata.data(DX[ p[0] ].data)
   .add(pv.Dot)
     .left(DX[ p[0] ].xval)
     .bottom(DX[ p[0] ].yval)
@@ -103,6 +104,12 @@ vis[ p[0] ].doUpdate = function(d, src) {
 	
 	this.root.s = true;
 	this.root.selection.data([{x:x, y:y, dx:dx, dy:dy}]);
+	this.root.render();
+}
+
+vis[ p[0] ].dataUpdate = function( newData ) {
+	this.root.tdata.data( newData );
+	this.root.s = false; //removes earlier selection
 	this.root.render();
 }
 
@@ -202,6 +209,14 @@ vis[ p[1] ].updateLinks = function(d) {
 	this.root.updating = false;
 }
 
+vis[ p[1] ].dataUpdate = function( newData ) {
+	this.root.tdata.data( newData );
+	this.root.s = false; //removes earlier selection
+	this.root.i.x = 0;
+	this.root.i.dx = 0;
+	this.root.focus.init();
+	this.root.render();
+}
 
 /* Focus panel (zoomed in). */
 vis[ p[1] ].focus = vis[ p[1] ].add(pv.Panel)
@@ -251,12 +266,15 @@ vis[ p[1] ].focus.add(pv.Panel)
     .lineWidth(2);
 
 /* Context panel (zoomed out). */
-var Context = vis[ p[1] ].add(pv.Panel) //CHANGE TO INNER
+vis[ p[1] ].Context = [];
+vis[ p[1] ].Context = vis[ p[1] ].add(pv.Panel) //CHANGE TO INNER
     .bottom(0)
     .height(DX[p[1]].h2);
 
+//vis[ p[1] ].Context =  Context;
+
 /* X-axis ticks. */
-Context.add(pv.Rule)
+vis[ p[1] ].Context.add(pv.Rule)
     .data(vis[ p[1] ].x.ticks())
     .left(vis[ p[1] ].x)
     .strokeStyle("#eee")
@@ -264,12 +282,12 @@ Context.add(pv.Rule)
     .text(vis[ p[1] ].x.tickFormat);
 
 /* Y-axis ticks. */
-Context.add(pv.Rule)
+vis[ p[1] ].Context.add(pv.Rule)
     .bottom(0);
 
 /* Context area chart. */
-Context.add(pv.Area)
-    .data(DX[p[1]].data)
+vis[ p[1] ].tdata = vis[ p[1] ].Context.add(pv.Area);
+vis[ p[1] ].tdata.data(DX[p[1]].data)
     .left(DX[p[1]].xval)
     .bottom(1)
     .height(DX[p[1]].yval)
@@ -279,7 +297,7 @@ Context.add(pv.Area)
     .lineWidth(2);
 
 /* The selectable, draggable focus region. */
-Context.add(pv.Panel)
+vis[ p[1] ].Context.add(pv.Panel)
     .data([vis[ p[1] ].i])
     .cursor("crosshair")
     .events("all")

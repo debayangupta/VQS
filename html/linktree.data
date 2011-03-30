@@ -52,7 +52,7 @@ tree = linksvis.add(pv.Layout.Tree)
     .orient("radial");
 
 tree.node.add(pv.Dot)
-	.fillStyle(function(n) n.nodeName == lsource ? "#ff7f0e" : (n.nodeName in inarray(_SELECTED) ? "#ff7f0e" : "#aec7e8"));
+	.fillStyle(function(n) {return n.nodeName == lsource ? "#ff7f0e" : (n.nodeName in inarray(_SELECTED) ? "#ff7f0e" : "#aec7e8")} );
 
 tree.label.add(pv.Label).font("9px sans-serif");
 
@@ -60,6 +60,5 @@ tree.link.add(pv.Line)
     .strokeStyle("#ccc")
     .lineWidth(1)
     .antialias(false);
-
 
 linksvis.render();

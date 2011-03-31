@@ -20,6 +20,8 @@ var plotId = 0;
 var bluePrint = [];
 var r = [];
 
+var X = false;
+
 //---------------------------------------
 // Common Functions
 //---------------------------------------
@@ -74,13 +76,13 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 	switch( plotType ) {
 
 	case 'scatterplot':
-		// scatterplot requires 3 more arguments: the names of the x,y,z fields
-		var vx = arguments[4]||'x', vy = arguments[5]||'y', vz = arguments[6]||'z';
+		// scatterplot requires 2 more arguments: the names of the x and y fields
+		var vx = arguments[4]||'x', vy = arguments[5]||'y';
+		this.fields	= [ vx, vy ];
+		this.x		= new Function("d", "return d." + vx);
+		this.y		= new Function("d", "return d." + vy);
 		this.xval 	= new Function("d", "return this.root.x(d." + vx + ")");
 		this.yval 	= new Function("d", "return this.root.y(d." + vy + ")");
-		this.colour = new Function("d", "return this.root.c(d." + vz + ")");
-		this.size 	= new Function("d", "return d." + vz);
-		this.title 	= new Function("d", "return d." + vz + ".toFixed(1)");
 		break;
 
 	case 'focus_context':
@@ -130,12 +132,12 @@ function getSource( d ) {
 		
 	case 'Scatterplot':
 		var gData = 'new getData( "scatterplot",';
-		gData += '"data/response.json",'; // command - currenly json file
-		gData += '400,400,'; // width and height
+		gData += '"data/abbrv.json",'; // command - currenly json file
+		gData += '300,300,'; // width and height
 		gData += '"' + d.fields[0].replace('.','_') + '",';
-		gData += '"' + d.fields[1].replace('.','_') + '",';
-		gData += '"' + d.fields[2].replace('.','_') + '")';
-		source = bluePrint.scatterplot.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]).replace(/_SCALE/, d.scale[1]).replace(/_SCALE/, d.scale[2]);
+		gData += '"' + d.fields[1].replace('.','_') + '"';
+		gData += ')';
+		source = bluePrint.scatterplot.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]).replace(/_SCALE/, d.scale[1]);
 		break;
 	
 	case 'Focus+Context':
@@ -144,7 +146,6 @@ function getSource( d ) {
 	
 	default:
 		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' ).replace(/_SCALE/, 'linear' );
-		//source = bluePrint.scatterplot.replace(/_DATA/, 'new getData( "scatterplot", "data/direct_scplot0.json", 400, 400, "x1", "y1", "z1")' );
 	}
 	
 	source = source.replace(/log\(0/g, 'log(1');
@@ -285,7 +286,6 @@ function genOptions( g ) {
 	case 'Scatterplot':
 		str += scale.replace(/_VAR/g, 'x');
 		str += scale.replace(/_VAR/g, 'y');
-		str += scale.replace(/_VAR/g, 'z');
 		break;
 	
 	case 'Focus+Context':
@@ -307,18 +307,13 @@ function updateAvailableVisualizations() {
 	var f = _gel('currentFields').getElementsByTagName('span');
 	var av = [];
 	
-	if( f.length > 0 ) {
-		av.push('Test 1');
-		av.push('Test 2');
-		av.push('Test 3');
-	}
-	
 	switch( f.length ) {
 	case 3:
-		av.push( 'Scatterplot' );
+		//av.push( 'Scatterplot' );
 		break;
 		
 	case 2:
+		av.push( 'Scatterplot' );
 		av.push( 'Focus+Context' );
 		break;
 	
@@ -674,7 +669,7 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	
 </div>
 
-<input type="button"  value="TEST" onclick="testButton()" style="position:absolute; right:0px; bottom:0px; z-index:5"/>
+<div id="test" style="position:absolute; right:0px; bottom:0px; z-index:5"></div>
 
 </body>
 </html>

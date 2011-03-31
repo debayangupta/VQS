@@ -74,6 +74,10 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 	this.data = JSON.parse( doAJAX( dataLoc ) );
 	
 	switch( plotType ) {
+	
+	case "histogram":
+		this.data = buildData();
+		break;
 
 	case 'scatterplot':
 		// scatterplot requires 2 more arguments: the names of the x and y fields
@@ -127,7 +131,11 @@ function getSource( d ) {
 	switch( d.graph ) {
 	
 	case 'Histogram':
-		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' ).replace(/_SCALE/, d.scale[0]);
+		var gData = 'new getData( "histogram",';
+		gData += '"data/zoom.json",'; // command - currenly json file
+		gData += '200,150'; // width and height
+		gData += ')';
+		source = bluePrint.histogram.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]);
 		break;
 		
 	case 'Scatterplot':
@@ -503,6 +511,9 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	border:5px #DDD solid;
 	-webkit-border-radius:19px;
 	-webkit-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
+	
+	-moz-border-radius:19px;
+	-moz-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
 }
 #closeBox {
 	line-height:30px;
@@ -512,6 +523,7 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	float:right;
 	margin:8px 8px 0px 0px;
 	-webkit-border-radius:8px;
+	-moz-border-radius:8px;
 	cursor:pointer;
 }
 #closeBox:hover {background:rgba(220,0,0,1);color:#FFF;}
@@ -536,6 +548,7 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	width:200px;
 	height:100%;
 	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#CCC), to(#666));
+	background:-moz-linear-gradient(left,#666,#CCC);
 	text-align:left;
 }
 #relations h2 {font-size:20px;color:#333;text-align:center}
@@ -550,6 +563,7 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	width:350px;
 	height:100%;
 	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#333), to(#666));
+	background:-moz-linear-gradient(left,#666,#333);
 	overflow:auto;
 }
 #currentGraph h2 {font-size:20px;color:#AAA;text-align:center}
@@ -573,10 +587,12 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	border:1px #AAA solid;
 	cursor:pointer;
 	-webkit-border-radius:5px;
+	-moz-border-radius:5px;
 }
 #availFields span:hover, #selectedFields span:hover, #currentFields span:hover {
 	background:#F5F5F5;border-style:dashed;
 	-webkit-box-shadow:3px 2px 3px rgba(0,0,0,0.5);
+	-moz-box-shadow:3px 2px 3px rgba(0,0,0,0.5);
 }
 
 #sFMode {
@@ -664,8 +680,6 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 	</div>
 	
 </div>
-
-<div id="test" style="position:absolute; right:0px; bottom:0px; z-index:5"></div>
 
 </body>
 </html>

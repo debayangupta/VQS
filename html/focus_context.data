@@ -1,4 +1,4 @@
-_DX = new getData( 'focus_context', 'data/direct_scplot0.json', 810, 300, 30, 'x1', 'y1');
+_DX = new getData( 'focus_context', 'data/direct_scplot0.json', 500, 300, 30, 'x1', 'y1');
 
 // Root panel. 
 _VX = new pv.Panel()
@@ -33,7 +33,6 @@ _VX.doUpdate = function(d, src) {
 }
 
 _VX.updateLinks = function(d) {
-
 	var L = this.root.links;
 	this.root.updating = true;
 	for(i=0; i<L.length; i++)
@@ -140,6 +139,5 @@ _VX.Context.add(pv.Panel)
     .cursor("move")
     .event("mousedown", pv.Behavior.drag())
     .event("drag", _VX.focus);
-alert(23);
+
 _VX.render();
-alert(23);

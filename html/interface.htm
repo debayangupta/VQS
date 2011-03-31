@@ -214,14 +214,11 @@ function generateVis() {
 	d.scale = scale;
 		
 	// link to all previous divs
-	vis[ d.id ] = [];
-	vis[ d.id ].links = [];
 	for(i=0; i<p.length; i++)
 	if(p[i]) {
 		if(!vis[ p[i] ].links)
 			vis[ p[i] ].links = [];
 		vis[ p[i] ].links.push( d.id );
-		vis[ d.id ].links.push( p[i] );
 	}
 	
 	// register div
@@ -619,7 +616,6 @@ body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
 /* end: current graph stuff */
 
 .vis {border:1px black solid; float:left; padding:20px;}
-
 	</style>
 	
 </head>

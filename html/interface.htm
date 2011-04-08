@@ -5,18 +5,24 @@
 	<title>Interface</title>
 	
 	<script type="text/javascript" src="protovis-3.2/protovis-r3.2.js"></script>
+	<script type="text/javascript" src="suggest.js"></script>
 	
 	<script type="text/javascript">
-<!--
-
 //---------------------------------------
 // Globals
 //---------------------------------------
+
+// variables
+var v = [];
+var v_old = [];
+
+// visualizations
 var vis = [];
 var p = [];
 var DX = [];
 var plotId = 0;
 
+// data or source
 var bluePrint = [];
 var r = [];
 
@@ -40,6 +46,14 @@ function doAJAX(target) {
 	xmlhttp.send(null);
 	
 	return xmlhttp.responseText;
+}
+
+// adds str before each element in arr
+function concatAll( arr, str ) {
+	for(i=0; i<arr.length; i++) {
+		arr[i] = str + '.' + arr[i];
+	}
+	return arr;
 }
 
 function spanify( arr ) {
@@ -68,6 +82,7 @@ function buildData() {
 }
 
 function getData( plotType, dataLoc, width, height) { // minimum args = 4
+
 	this.w = width;
 	this.h = height;
 
@@ -76,7 +91,6 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 	switch( plotType ) {
 	
 	case "histogram":
-		this.data = buildData();
 		break;
 
 	case 'scatterplot':
@@ -108,21 +122,6 @@ function getData( plotType, dataLoc, width, height) { // minimum args = 4
 
 	return this;
 }
-
-function doDataUpdate( command ) {
-
-	var response = JSON.parse( doAJAX( command ) );
-	
-	var u = response.update;
-	
-	for( i=0; i<u.length; i++)
-		vis[ u[i] ].dataUpdate( response[ u[i] ] );
-}
-
-function doSelection() {
-	
-}
-
 //---------------------------------------
 // Protovis Source Code Creation
 //---------------------------------------
@@ -130,14 +129,6 @@ function getSource( d ) {
 	var source = '';
 	switch( d.graph ) {
 	
-	case 'Histogram':
-		var gData = 'new getData( "histogram",';
-		gData += '"data/zoom.json",'; // command - currenly json file
-		gData += '200,150'; // width and height
-		gData += ')';
-		source = bluePrint.histogram.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]);
-		break;
-		
 	case 'Scatterplot':
 		var gData = 'new getData( "scatterplot",';
 		gData += '"data/abbrv.json",'; // command - currenly json file
@@ -147,13 +138,6 @@ function getSource( d ) {
 		gData += ')';
 		source = bluePrint.scatterplot.replace(/_DATA/, gData ).replace(/_SCALE/, d.scale[0]).replace(/_SCALE/, d.scale[1]);
 		break;
-	
-	case 'Focus+Context':
-		source = bluePrint.focus_context;
-		break;
-	
-	default:
-		source = bluePrint.histogram.replace(/_DATA/, 'buildData()' ).replace(/_SCALE/, 'linear' );
 	}
 	
 	source = source.replace(/log\(0/g, 'log(1');
@@ -162,56 +146,21 @@ function getSource( d ) {
 }
 
 //---------------------------------------
-// Visualization creation, editing and deletion
+// visualization generation
 //---------------------------------------
-function editingInterface( mouse ) {
-	// visuals
-	_gel('edit').style.display = 'block';
-	
-	// get current selection
-	var l = _gel('selectedFields').getElementsByTagName('span');
-	var selected = '[ \'' + this.innerHTML + '\'';
-	for(i=0; i< l.length; i++) {
-		if( l[i] != this )
-			selected += ',\'' + l[i].innerHTML + '\'';
-	}
-	selected += ']';
-
-	// clear any earlier graph
-	_gel('links').innerHTML = '';
-	
-	// create protovis source for the new graph
-	var lscript = document.createElement('script');
-	lscript.innerHTML = bluePrint.linktree.replace(/_SOURCE/, '\'' + this.innerHTML + '\'' ).replace(/_SELECTED/g, selected);
-	
-	// add to new graph
-	var ld = document.createElement('div');
-	ld.id = 'linkscenter';
-	ld.appendChild( lscript );
-	
-	document.body.appendChild( ld );
-	_gel('links').appendChild( ld );
-	
-	return false;
-}
-
 function generateVis() {
 
-	// selected plot
-	var oldV = _gel('graphType').getElementsByTagName('div')[0].selected;
-
+	//selected plot
+	var oldV = _gel('vis').selected;
+	
 	// extract parameters
 	var graph = oldV.childNodes[0].nodeValue;
-	
-	var f = _gel('currentFields').getElementsByTagName('span');
 	var fields = [];
-	for( i=0; i<f.length; i++)
-		fields.push( f[i].innerHTML );
-		
-	var s = _gel('graphOptions').getElementsByTagName('span');
-	var scale = [];
-	for( i=0; i<s.length; i++)
-		scale.push( s[i].scale? s[i].scale:'linear' );
+	
+	// could do this based on graph
+	if(v['x']) fields.push( v['x'] ); // has to be true
+	if(v['y']) fields.push( v['y'] );
+	if(v['z']) fields.push( v['z'] );
 	
 	// create div
 	var d = document.createElement('div');
@@ -219,20 +168,18 @@ function generateVis() {
 	d.className = 'vis';
 	d.graph = graph;
 	d.fields = fields;
-	d.scale = scale;
-		
-	// link to all previous divs
+	d.scale = ['linear', 'linear'];
+	
+	// register div
 	for(i=0; i<p.length; i++)
 	if(p[i]) {
 		if(!vis[ p[i] ].links)
 			vis[ p[i] ].links = [];
 		vis[ p[i] ].links.push( d.id );
 	}
-	
-	// register div
 	p.push( d.id );
 	
-	// insert code into document
+	// generate and add protovis source
 	var script = document.createElement('script');
 	script.innerHTML = getSource(d);
 	
@@ -241,15 +188,12 @@ function generateVis() {
 	_gel('main').appendChild(d);
 	
 	// deselect
-	oldV.className = '';
-	oldV.innerHTML = oldV.childNodes[0].nodeValue;
-	_gel('graphType').getElementsByTagName('div')[0].selected = null;
-	
-	// cleanup current visualization selection: optional
-	//_gel('currentFields').getElementsByTagName('div')[0].innerHTML = '';
+	oldV.className = oldV.className.replace(' selected', '');
+	oldV.removeChild( oldV.getElementsByTagName('input')[0] );
+	_gel('vis').selected = null;
 }
 
-function deleteVisualization( x ) {
+function deleteVisualization( x ) { // not used right now
 	
 	var id = p[x];
 	
@@ -260,426 +204,271 @@ function deleteVisualization( x ) {
 }
 
 //---------------------------------------
-// User Interface
+// visualization selection
 //---------------------------------------
-function toggleScale(el) {
-	this.event.stopPropagation();
+function updateVisualizationList() {
+	var count = 0;
+	if( v['x'] ) count++;
+	if( v['y'] ) count++;
+	if( v['z'] ) count++;
 	
-	var op;
-	if( el.scale=='log') {
-		el.scale = 'linear';
-		op = 'log';
-	}
-	else {
-		el.scale = 'log';
-		op = 'linear';
-	}
-	
-	el.innerHTML = el.innerHTML.replace( el.scale, op).replace( op, el.scale );
-}
-function genOptions( g ) {
-	var str = '<div id="graphOptions">';
-	
-	var scale = '<span scale="linear" onclick="toggleScale(this)">_VAR: linear (click to switch to log)</span>';
-	
-	switch( g ) {
-	
-	case 'Histogram':
-		str += scale.replace(/_VAR/g, 'x');
-		break;
-		
-	case 'Scatterplot':
-		str += scale.replace(/_VAR/g, 'x');
-		str += scale.replace(/_VAR/g, 'y');
-		break;
-	
-	case 'Focus+Context':
-		str += scale.replace(/_VAR/g, 'x');
-		str += scale.replace(/_VAR/g, 'y');
-		break;
-	
-	default:
-		str += '!!!';
-	}
-	
-	str += '</div>';
-	return str;
-}
-
-function updateAvailableVisualizations() {
-
-	// build data
-	var f = _gel('currentFields').getElementsByTagName('span');
 	var av = [];
-	
-	switch( f.length ) {
-	case 3:
-		//av.push( 'Scatterplot' );
-		break;
-		
-	case 2:
-		av.push( 'Scatterplot' );
-		av.push( 'Focus+Context' );
-		break;
-	
+	switch( count ) {
 	case 1:
 		av.push( 'Histogram' );
 		break;
+	case 2:
+		av.push( 'Scatterplot' );
+		av.push( 'Area Chart' );
+		av.push( 'Bar Chart' );
+		break;
+	case 3:
+		break;
 	}
+	_gel('vis').innerHTML = spanify( av.sort() );
 	
-	_gel('graphType').getElementsByTagName('div')[0].innerHTML = spanify(av);
-	
-	// build actions
-	var v = _gel('graphType').getElementsByTagName('span');
-	_gel('graphType').getElementsByTagName('div')[0].selected = null;
-	var selectVis = function() {
+	//-----------------------------
+	var selectVis = function(e) {
 		var oldV = this.parentNode.selected;
 		if(oldV) {
-			oldV.className = '';
-			oldV.innerHTML = oldV.childNodes[0].nodeValue;
+			oldV.className = oldV.className.replace(' selected', '');
+			oldV.removeChild( oldV.getElementsByTagName('input')[0] );
 		}
 		
-		this.className = 'selected';
-		this.innerHTML += '<input type="button" value="Generate" onmouseup="generateVis()"/>' + genOptions( this.innerHTML );
+		this.className += ' selected';
+		this.innerHTML += '<input type="button" value="Generate" onmouseup="generateVis()"/>'
 		this.parentNode.selected = this;
+		
+		e.stopPropagation();
 	}
-	for(i=0; i<v.length; i++ )
-		v[i].onclick = selectVis;
+	
+	var s = _gel('vis').getElementsByTagName('span');
+	_gel('vis').selected = null;
+	for(i=0; i<s.length; i++) {
+		s[i].className = s[i].innerHTML.replace(/\s/g,'');
+		s[i].onclick = selectVis;
+	}
+	
 }
 
-function destroyNode() {this.parentNode.removeChild( this );updateAvailableVisualizations()}
+function selectionComplete( vInput ) {
+	// Congratulations ! Something has been selected !
 
-function addSelected() {
-	var newNode = this.cloneNode(true);
-	_gel('currentFields').getElementsByTagName('div')[0].appendChild( newNode );
-	newNode.onclick = destroyNode;
+	v[ vInput.id ] = vInput.value.replace(/\s/g,'');
 	
-	updateAvailableVisualizations();
+	if( v[ vInput.id ] != v_old[ vInput.id ] ) {
+		v_old[ vInput.id ] = v[ vInput.id ];
+		updateVisualizationList();
+	}
 }
 
-function deleteSelected() {
-
-	var fname = this.innerHTML;
-	var relation = /[^\.]*/.exec(fname);
-	var field = fname.replace( relation + '.', '');
-
-	// remove from selected
-	this.parentNode.removeChild( this );
+//---------------------------------------
+// variables (and a tiny bit of vis selection)
+//---------------------------------------
+function setupSuggest() {
+	var r = JSON.parse(doAJAX('relations.data'));
+	var options = [];
+	for(i=0; i<r.relations.length; i++) {
+		options = options.concat( concatAll( r[ r.relations[i] ], r.relations[i] ) );
+	}
+	options.sort();
+	 
+	v_old['x'] = v['x'] = '';	createAutoComplete( options, _gel('x'), _gel('xsuggest') );
+	v_old['y'] = v['y'] = '';	createAutoComplete( options, _gel('y'), _gel('ysuggest') );
+	v_old['z'] = v['z'] = '';	createAutoComplete( options, _gel('z'), _gel('zsuggest') );
 	
-	// move back into available
-	r[relation].push( field );
-	
-	// remove from current
-	var cs = _gel('currentFields').getElementsByTagName('span');
-	var flag = false;
-	for(i=0; i<cs.length; i++) {
-		if( cs[i].innerHTML == fname) {
-			cs[i].parentNode.removeChild( cs[i] );
-			flag = true;
-			// no break - the same field can appear more than once
+	// aforementioned vis selection portion
+	document.onclick = function() {
+		var oldV = _gel('vis').selected;
+		if(oldV) {
+			oldV.className = oldV.className.replace(' selected', '');
+			oldV.removeChild( oldV.getElementsByTagName('input')[0] );
 		}
-	}
-	
-	// update list of available visualizations
-	if( flag )
-		updateAvailableVisualizations();
-	
-	// destroy visualizations
-	for(i=0; i<p.length; i++) {
-		
-		if( (_gel( p[i] ).fields).toString().search( fname ) > -1 )
-			deleteVisualization( i );
-	}
-
-	// if necessary, refresh Fields
-	if( _gel('relations').getElementsByTagName('div')[0].selected.innerHTML == relation )
-		buildFields( relation );
-}
-
-function toggleMode( el ) {
-
-	var spans = _gel('selectedFields').getElementsByTagName('span');
-	
-	if( el.value == 'Current Mode: ADD' ) {
-		// switch to delete mode
-		el.value = 'Current Mode: DEL';
-		
-		for(i=0; i<spans.length; i++)
-			spans[i].onclick = deleteSelected;
-	}
-	else {
-		el.value = 'Current Mode: ADD';
-		
-		for(i=0; i<spans.length; i++)
-			spans[i].onclick = addSelected;
+		_gel('vis').selected = null;
 	}
 }
 
-function buildFields( relation ) {	
-
-	_gel('availFields').getElementsByTagName('div')[0].innerHTML = spanify( r[ relation ] );
-	
-	var sF = _gel('selectedFields').getElementsByTagName('div')[0];
-	
-	var selectField = function() { // applies to availFields spans
-	
-		if( _gel('sFMode').value != 'Current Mode: ADD' )
-			toggleMode( _gel('sFMode') );
-			
-		this.onclick = addSelected; // default for selectedFields spans
-		this.oncontextmenu = editingInterface;
-		this.innerHTML = relation + '.' + this.innerHTML;
-		sF.appendChild( this );
-		r[ relation ] = unspanify( _gel('availFields').getElementsByTagName('span') );
-	}
-	
-	var f = _gel('availFields').getElementsByTagName('span');
-	for( i=0; i<f.length; i++ )
-		f[i].onclick = selectField;
-		
-	if( _gel('sFMode').value != 'Current Mode: ADD' )
-		toggleMode( _gel('sFMode') );
-	
-}
-
-function getAvailableRelations() {
-	// build data
-	r = JSON.parse(doAJAX('relations.data')); //global
-	_gel('relations').getElementsByTagName('div')[0].innerHTML = spanify(r.relations);
-	
-	// build actions
-	var rels = _gel('relations').getElementsByTagName('span');
-	_gel('relations').getElementsByTagName('div')[0].selected = null;
-	
-	var selectRelation = function() {
-		if(this.parentNode.selected)
-			this.parentNode.selected.className = '';
-		this.parentNode.selected = this;
-		this.className = 'selected';
-		buildFields( this.innerHTML );
-	}
-	
-	for( i=0; i<rels.length; i++)
-		rels[i].onclick = selectRelation;
-}
-
-function testButton() {
-	deleteVisualization( 0 );
-}
-
+//---------------------------------------
+// Page control
+//---------------------------------------
 function setSize() {
-	_gel('main').style.width = (window.innerWidth || document.documentElement.clientWidth) - 570 + 'px';
-	_gel('main').style.height = (window.innerHeight || document.documentElement.clientHeight) - 20 + 'px';
-	_gel('edit').style.width = (window.innerWidth || document.documentElement.clientWidth) + 'px';
-	_gel('edit').style.height = (window.innerHeight || document.documentElement.clientHeight) + 'px';
+	_gel('main').style.width = (window.innerWidth || document.documentElement.clientWidth) - 400 + 'px';
+	_gel('main').style.height = (window.innerHeight || document.documentElement.clientHeight) + 'px';
 }
 
 window.onload = function() {
 	setSize();
 	window.onresize = setSize;
-	_gel('edit').onclick = function(){_gel('edit').style.display = 'none'};
+	setupSuggest();
 	
-	getAvailableRelations();
-	
-	bluePrint.histogram = doAJAX('Histogram.data');
 	bluePrint.scatterplot = doAJAX('Scatterplot.data');
-	bluePrint.focus_context = doAJAX('focus_context.data');
-	
-	bluePrint.linktree = doAJAX('linktree.data');
 }
-//-->
 	</script>
+	
 	<style type="text/css">
-html, body {background:#EEE;width:100%;height:100%;overflow:hidden}
+html, body {background:#FFF;width:100%;height:100%}
 body {margin:0;padding:0;text-align:center;font-family:Verdana;font-size:16px}
+/*
 ::-moz-selection{background-color:transparent;}
-::selection{background-color:transparent;}/*IE..sigh.. IE8 ignores it*/
+::selection{background-color:transparent;}
+*/
 
-#edit {
+#leftNav {
+	width:400px;
+	height:100%;
+	background:#FFF;
+	position:fixed;
+	border-left:1px black solid;
+	border-right:1px black solid;
+}
+
+#leftNav h2 {
+	font-size:20px;
+	border-top:1px black solid;
+	border-bottom:1px black solid;
+	margin:0px;
+	padding:10px 0px;
+	background:-webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#CCC));
+	background:-moz-linear-gradient(top,#EEE,#CCC);
+}
+
+#leftNav>div {
+	height:30%;
+	overflow:hidden;
+	background:-webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#FFF));
+	background:-moz-linear-gradient(top,#EEE,#FFF);
+}
+
+#leftNav #cmd {
+	height:170px;
+}
+
+#dim {
+}
+
+#dim>div {
+	display:block;
+	height:40px;
+	text-align:left;
+	margin-top:20px;
+}
+#dim span {
+	border:1px black solid;
+	padding:10px;
+	margin:10px;
+	background:#FFF;
+}
+#dim input[type="text"] {
+	width:248px;
+	font-size:20px;
+	line-height:34px;
+}
+/*-----------------------------------*/
+#vis {}
+#vis span {
+	display:block;
+	font-size:20px;
+	text-align:left;
+	padding:5px 0px 5px 100px;
+	line-height:50px;
+	margin-top:18px;
+	background:url('') no-repeat 20px 5px;
+}
+#vis span.selected {
+	background-color:#444;
+	color:#FFF;
+}
+#vis span.selected input {float:right; margin:13px 20px 0px 0px}
+#vis span.Histogram 	{background-image:url('img/Histogram.png')}
+#vis span.AreaChart 	{background-image:url('img/AreaChart.png')}
+#vis span.BarChart 		{background-image:url('img/BarChart.png')}
+#vis span.Scatterplot 	{background-image:url('img/Scatterplot.png')}
+/*-----------------------------------*/
+#main {
+	margin-left:400px;
+}
+.vis {border:1px black solid; float:left; padding:20px;}
+/*-----------------------------------*/
+.suggest {
 	position:absolute;
-	z-index:5;
-	background:rgba(0,0,0,0.8);
+	background:#fff;
+	border:#000 1px solid;
+	max-height:200px;
+	overflow:hidden;
+	overflow-y:scroll;
+}
+
+.suggest div {
+	background:#fff;
+	color:#000;
+	padding-left:4px;
+	cursor:hand;
+	text-align:left;
+	line-height:30px;
+}
+
+.suggest div.over {
+	color:#fff;
+	background:#000;
+}
+
+#test {
+	width:500px;
+	height:500px;
+	position:absolute;
+	right:0px;
+	top:0px;
+	overflow:auto;
+	border:1px black solid;
 	display:none;
 }
-#box {
-	width:900px;height:700px;
-	background:#CCC;color:#333;
-	position:absolute;
-	left:50%;top:50%;
-	margin:-350px 0px 0px -450px;
-	padding:10px;
-	border:5px #DDD solid;
-	-webkit-border-radius:19px;
-	-webkit-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
-	
-	-moz-border-radius:19px;
-	-moz-box-shadow:0px 0px 40px rgba(0,0,0,0.8);
-}
-#closeBox {
-	line-height:30px;
-	width:30px;
-	background-color:rgba(180,0,0,1);
-	color:#EEE;
-	float:right;
-	margin:8px 8px 0px 0px;
-	-webkit-border-radius:8px;
-	-moz-border-radius:8px;
-	cursor:pointer;
-}
-#closeBox:hover {background:rgba(220,0,0,1);color:#FFF;}
 
-#links {
-	margin:0px auto;
-	background:#FFF; /* background colour for link visualization */
-}
-
-#main {
-	background:white;
-	position:absolute;
-	top:10px;
-	left:10px;
-	overflow:auto;
-}
-
-#relations {
-	margin:0px;
-	display:block;
-	float:right;
-	width:200px;
-	height:100%;
-	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#CCC), to(#666));
-	background:-moz-linear-gradient(left,#666,#CCC);
-	text-align:left;
-}
-#relations h2 {font-size:20px;color:#333;text-align:center}
-#relations span {display:block;line-height:40px;padding-left:20px;cursor:default}
-#relations span:hover {background:#666}
-#relations span.selected {color:#DDD;background:#333}
-
-/* current graph stuff */
-#currentGraph {
-	display:block;
-	float:right;
-	width:350px;
-	height:100%;
-	background:-webkit-gradient(linear, 100% 0%, 0% 0%, from(#333), to(#666));
-	background:-moz-linear-gradient(left,#666,#333);
-	overflow:auto;
-}
-#currentGraph h2 {font-size:20px;color:#AAA;text-align:center}
-#availFields, #selectedFields, #currentFields, #graphType {
-	margin:0px 10px 20px 10px;
-	background:#CCC;
-	padding:1px 10px 10px 10px;
-	text-align:left;
-	
-	-webkit-border-top-right-radius:23px;
-	-moz-border-radius-topright:23px;
-}
-#availFields span, #selectedFields span, #currentFields span {
-	font-size:9px;
-	line-height:19px;
-	text-transform:uppercase;
-	background:#EEE;
-	padding:1px 3px;
-	display:inline-block;
-	margin:2px;
-	border:1px #AAA solid;
-	cursor:pointer;
-	-webkit-border-radius:5px;
-	-moz-border-radius:5px;
-}
-#availFields span:hover, #selectedFields span:hover, #currentFields span:hover {
-	background:#F5F5F5;border-style:dashed;
-	-webkit-box-shadow:3px 2px 3px rgba(0,0,0,0.5);
-	-moz-box-shadow:3px 2px 3px rgba(0,0,0,0.5);
-}
-
-#sFMode {
-	display:inline-block;
-	float:right;
-	margin-top:-37px;
-}
-
-#graphType span {
-	margin:10px;
-	padding:10px;
-	display:block;
-	background:#E7E7E7;
-	border:1px #555 solid;
-	cursor:pointer;
-}
-#graphType span:hover {background:#555;color:#DDD}
-#graphType span.selected {background:#333;color:#DDD}
-
-#graphType input {
-	margin:0px;
-	margin-top:-2px;
-	float:right;
-}
-#graphOptions {
-	margin-top:10px;
-	display:block;
-}
-#graphOptions span {
-	display:block;
-	margin:5px 10px;
-	font-size:12px;
-	background:#333;
-	color:#AAA;
-}
-
-/* end: current graph stuff */
-
-.vis {border:1px black solid; float:left; padding:20px;}
 	</style>
 	
 </head>
 
 <body>
 
-<div id="edit">
-<div id="box">
-	<div id="closeBox">X</div>
-	<h2>Links</h2>
-	<div id="links"></div>
-</div>
-</div>
+<!-- control bar -->
+<div id="leftNav">
 
-<div id="main">
+<h2>Dimensions</h2>
+<div id="dim">
 
-</div>
-
-<div id="relations">
-	<h2>Available Relations</h2>
-	<div>Loading..</div>
-</div>
-
-<div id="currentGraph">
-	<h2>Select Fields</h2>
-	
-	<div id="availFields">
-		<p>Available Fields</p>
-		<div></div>
+	<div>
+		<span>X</span>
+		<input id="x" type="text">
+		<div id="xsuggest" class="suggest" style="visibility:hidden;width:250px;"></div>
 	</div>
 	
-	<div id="selectedFields">
-		<p>Selected Fields</p>
-		<input type="button"  id="sFMode" value="Current Mode: ADD" onclick="toggleMode(this)" title="Click to toggle mode"/>
-		<div></div>
+	<div>
+		<span>Y</span>
+		<input id="y" type="text">
+		<div id="ysuggest" class="suggest" style="visibility:hidden;width:250px;"></div>
 	</div>
 	
-	<div id="currentFields">
-		<p>Current Visualization</p>
-		<div></div>
-	</div>
-	
-	<div id="graphType">
-		<p>Available Visualizations</p>
-		<div></div>
+	<div>
+		<span>Z</span>
+		<input id="z" type="text">
+		<div id="zsuggest" class="suggest" style="visibility:hidden;width:250px;"></div>
 	</div>
 	
 </div>
+
+<h2>Visualizations</h2>
+<div id="vis">
+</div>
+
+<h2>Commands</h2>
+<div id="cmd">
+</div>
+	
+</div>
+<!-- end of control bar -->
+
+<div id="main"></div>
+
+<textarea id="test"></textarea>
 
 </body>
 </html>

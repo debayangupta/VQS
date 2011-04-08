@@ -63,14 +63,16 @@ _VX.tdata.data(_DX.data)
 	.fillStyle(function(d) {
 		var db = this.root.db;
 		if( !db ) return 'white';
-		return (db && ((d[db.px] < db.x1) || (d[db.px] > db.x2) || (d[db.py] < db.y1) || (d[db.py] > db.y2)) ? 'red' : 'lime');
+		return (db && ((d[db.px] < db.x1) || (d[db.px] > db.x2) || (d[db.py] < db.y1) || (d[db.py] > db.y2)) ? 'grey' : 'red');
 	});
 
 _VX.updateLinks = function() {
-	var L = this.root.links;
+	// since all fields are linked
 	this.root.updating = true;
-	for(i=0; i<L.length; i++)
-		vis[ L[i] ].doUpdate(this.root, _DX.fields);
+	for(i=0; i<p.length; i++)
+	if( p[i] )
+	if( vis[ p[i] ] != this.root )
+		vis[ p[i] ].doUpdate(this.root, _DX.fields);
 	this.root.updating = false;
 }
 
